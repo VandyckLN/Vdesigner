@@ -11,3 +11,6 @@ license = "MIT"
 [workspace.dependencies]
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp", "ico"] }
 thiserror = "2"
+webp = "0.3"
+ravif = { version = "0.11", default-features = false, features = ["threading"] }
+rgb = "0.8"
