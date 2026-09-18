@@ -11,3 +11,7 @@
 | fast_image_resize | MIT OR Apache-2.0 | redimensionamento Lanczos3 com SIMD |
 | imageproc | MIT | filtro de mediana para denoise |
 | resvg | MPL-2.0 | rasterização de SVG |
+| tauri | MIT OR Apache-2.0 | camada de aplicativo |
+| tauri-plugin-dialog | MIT OR Apache-2.0 | seleção de arquivo e pasta |
+| base64 | MIT OR Apache-2.0 | transporte da prévia para a interface |
+| serde, serde_json | MIT OR Apache-2.0 | serialização de Job |
