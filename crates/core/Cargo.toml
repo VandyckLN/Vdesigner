@@ -11,3 +11,4 @@ thiserror.workspace = true
 webp.workspace = true
 ravif.workspace = true
 rgb.workspace = true
+fast_image_resize.workspace = true
