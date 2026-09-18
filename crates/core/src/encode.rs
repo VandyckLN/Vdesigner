@@ -62,14 +62,32 @@ fn encode_with_image_crate(
 
 fn encode_jpeg(img: &DynamicImage, quality: u8) -> Result<Vec<u8>, CoreError> {
     // JPEG has no alpha channel, so the image is flattened over white first.
-    let rgb = DynamicImage::ImageRgb8(img.to_rgb8());
+    let rgb = DynamicImage::ImageRgb8(composite_over_white(img));
     let mut bytes = Vec::new();
-    let mut encoder =
-        image::codecs::jpeg::JpegEncoder::new_with_quality(std::io::Cursor::new(&mut bytes), quality);
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
+        std::io::Cursor::new(&mut bytes),
+        quality,
+    );
     encoder
         .encode_image(&rgb)
         .map_err(|e| CoreError::Encode(e.to_string()))?;
     Ok(bytes)
+}
+
+/// Blends every pixel over an opaque white background using source-over
+/// compositing, so colour hidden under transparent pixels never leaks into
+/// formats without an alpha channel.
+fn composite_over_white(img: &DynamicImage) -> image::RgbImage {
+    let rgba = img.to_rgba8();
+    let (width, height) = rgba.dimensions();
+    let mut out = image::RgbImage::new(width, height);
+    for (src, dst) in rgba.pixels().zip(out.pixels_mut()) {
+        let alpha = src.0[3] as f32 / 255.0;
+        let blend =
+            |channel: u8| -> u8 { (channel as f32 * alpha + 255.0 * (1.0 - alpha)).round() as u8 };
+        *dst = image::Rgb([blend(src.0[0]), blend(src.0[1]), blend(src.0[2])]);
+    }
+    out
 }
 
 fn encode_webp(img: &DynamicImage, spec: &EncodeSpec) -> Result<Vec<u8>, CoreError> {
@@ -89,7 +107,11 @@ fn encode_avif(img: &DynamicImage, spec: &EncodeSpec) -> Result<Vec<u8>, CoreErr
         .pixels()
         .map(|p| rgb::RGBA8::new(p.0[0], p.0[1], p.0[2], p.0[3]))
         .collect();
-    let buffer = ravif::Img::new(pixels.as_slice(), img.width() as usize, img.height() as usize);
+    let buffer = ravif::Img::new(
+        pixels.as_slice(),
+        img.width() as usize,
+        img.height() as usize,
+    );
     let encoded = ravif::Encoder::new()
         .with_quality(spec.quality as f32)
         .with_speed(6)
