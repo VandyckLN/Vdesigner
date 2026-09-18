@@ -13,3 +13,4 @@ ravif.workspace = true
 rgb.workspace = true
 fast_image_resize.workspace = true
 imageproc.workspace = true
+resvg.workspace = true
