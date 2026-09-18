@@ -1,17 +1,57 @@
-# Dependências de terceiros
+# Third-party licenses
 
-| Pacote | Licença | Uso |
-|--------|---------|-----|
-| image | MIT OR Apache-2.0 | decodificação e codificação de formatos raster |
-| serde | MIT OR Apache-2.0 | serialização/desserialização do `Job` para JSON |
-| thiserror | MIT OR Apache-2.0 | definição de erros |
-| webp | MIT OR Apache-2.0 (crate); BSD-3-Clause (libwebp, C, embutida) | codificação WebP |
-| ravif | BSD-3-Clause | codificação AVIF |
-| rgb | MIT | conversão de pixels para o ravif |
-| fast_image_resize | MIT OR Apache-2.0 | redimensionamento Lanczos3 com SIMD |
-| imageproc | MIT | filtro de mediana para denoise |
-| resvg | MPL-2.0 | rasterização de SVG |
-| tauri | MIT OR Apache-2.0 | camada de aplicativo |
-| tauri-plugin-dialog | MIT OR Apache-2.0 | seleção de arquivo e pasta |
-| base64 | MIT OR Apache-2.0 | transporte da prévia para a interface |
-| serde, serde_json | MIT OR Apache-2.0 | serialização de Job |
+Vdesigner is MIT-licensed (see `LICENSE`). It depends on the open-source
+packages listed below. This list covers direct dependencies only, not the
+full transitive dependency graph.
+
+## Rust crates
+
+### Workspace dependencies (`Cargo.toml`)
+
+| Crate | License |
+|---|---|
+| image | MIT OR Apache-2.0 |
+| serde | MIT OR Apache-2.0 |
+| thiserror | MIT OR Apache-2.0 |
+| webp | MIT OR Apache-2.0 (crate); bundles `libwebp` (C), BSD-3-Clause |
+| ravif | BSD-3-Clause |
+| rgb | MIT |
+| fast_image_resize | MIT OR Apache-2.0 |
+| imageproc | MIT |
+| resvg | Apache-2.0 OR MIT |
+
+### `src-tauri` dependencies (`src-tauri/Cargo.toml`)
+
+| Crate | License |
+|---|---|
+| tauri | Apache-2.0 OR MIT |
+| tauri-plugin-dialog | Apache-2.0 OR MIT |
+| serde_json | MIT OR Apache-2.0 |
+| base64 | MIT OR Apache-2.0 |
+
+## JavaScript packages (`ui/package.json`)
+
+### Dependencies
+
+| Package | License |
+|---|---|
+| @tauri-apps/api | Apache-2.0 OR MIT |
+| @tauri-apps/plugin-dialog | MIT OR Apache-2.0 |
+| react | MIT |
+| react-dom | MIT |
+
+### Dev dependencies
+
+| Package | License |
+|---|---|
+| @testing-library/jest-dom | MIT |
+| @testing-library/react | MIT |
+| @testing-library/user-event | MIT |
+| @types/node | MIT |
+| @types/react | MIT |
+| @types/react-dom | MIT |
+| @vitejs/plugin-react | MIT |
+| jsdom | MIT |
+| typescript | Apache-2.0 |
+| vite | MIT |
+| vitest | MIT |
