@@ -8,3 +8,4 @@
 | ravif | BSD-3-Clause | codificação AVIF |
 | rgb | MIT | conversão de pixels para o ravif |
 | fast_image_resize | MIT OR Apache-2.0 | redimensionamento Lanczos3 com SIMD |
+| imageproc | MIT | filtro de mediana para denoise |
