@@ -31,8 +31,14 @@ pub fn resize(img: &DynamicImage, spec: &ResizeSpec) -> Result<DynamicImage, Cor
     match spec.fit {
         FitMode::Stretch => scale(img, target_w, target_h),
         FitMode::Contain => {
-            // With a single dimension given, the target already has the source ratio,
-            // so scaling alone produces the answer and no padding is needed.
+            if spec.width.is_none() || spec.height.is_none() {
+                // With a single dimension given, `target_size` already derived the other
+                // one from the source ratio, so scaling straight to it is exact and no
+                // padding is needed. Re-deriving the box via `fit_inside` here would use
+                // a different rounding rule (round vs. `target_size`'s floor) and could
+                // disagree by a pixel, producing a spurious pad on a lossless case.
+                return scale(img, target_w, target_h);
+            }
             let (inner_w, inner_h) = fit_inside(src_w, src_h, target_w, target_h);
             let scaled = scale(img, inner_w, inner_h)?;
             if (inner_w, inner_h) == (target_w, target_h) {
