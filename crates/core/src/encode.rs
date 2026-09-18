@@ -1,7 +1,7 @@
 use crate::error::CoreError;
 use image::DynamicImage;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum OutputFormat {
     WebP,
     Avif,
@@ -11,7 +11,7 @@ pub enum OutputFormat {
     Ico,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct EncodeSpec {
     pub format: OutputFormat,
     /// 1 to 100. Ignored by the lossless formats.

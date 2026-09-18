@@ -1,7 +1,7 @@
 use crate::error::CoreError;
 use image::{DynamicImage, Rgba, RgbaImage};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct SharpenSpec {
     /// 0.0 disables the filter. Useful range goes up to 3.0.
     pub amount: f32,
@@ -9,13 +9,13 @@ pub struct SharpenSpec {
     pub radius: f32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct DenoiseSpec {
     /// Median filter radius in pixels. 0 disables the filter.
     pub radius: u32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct AdjustSpec {
     /// -1.0 to 1.0.
     pub brightness: f32,

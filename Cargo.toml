@@ -10,6 +10,7 @@ license = "MIT"
 
 [workspace.dependencies]
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp", "ico"] }
+serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 webp = "0.3"
 ravif = "0.11"

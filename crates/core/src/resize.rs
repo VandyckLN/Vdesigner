@@ -3,7 +3,7 @@ use fast_image_resize::images::Image as FirImage;
 use fast_image_resize::{FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer};
 use image::{DynamicImage, Rgba, RgbaImage};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum FitMode {
     /// Fits inside the target and pads the remaining area. Never crops.
     Contain,
@@ -13,7 +13,7 @@ pub enum FitMode {
     Stretch,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct ResizeSpec {
     pub width: Option<u32>,
     pub height: Option<u32>,

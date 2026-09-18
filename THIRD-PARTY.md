@@ -3,6 +3,7 @@
 | Pacote | Licença | Uso |
 |--------|---------|-----|
 | image | MIT OR Apache-2.0 | decodificação e codificação de formatos raster |
+| serde | MIT OR Apache-2.0 | serialização/desserialização do `Job` para JSON |
 | thiserror | MIT OR Apache-2.0 | definição de erros |
 | webp | MIT OR Apache-2.0 (crate); BSD-3-Clause (libwebp, C, embutida) | codificação WebP |
 | ravif | BSD-3-Clause | codificação AVIF |
