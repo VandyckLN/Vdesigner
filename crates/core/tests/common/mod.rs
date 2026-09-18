@@ -1,3 +1,7 @@
+//! Shared test helpers. Not every test binary that includes this module (via
+//! `mod common;`, compiled per binary) uses every helper here.
+#![allow(dead_code)]
+
 use image::{DynamicImage, Rgba, RgbaImage};
 
 /// Builds a deterministic gradient image, so tests never depend on binary fixtures.
@@ -12,10 +16,6 @@ pub fn gradient(width: u32, height: u32) -> DynamicImage {
 }
 
 /// Encodes an image with the `image` crate, used only to produce test input bytes.
-///
-/// Not every test binary that includes this shared module uses it (`mod common;`
-/// is compiled per test binary), so it is explicitly allowed to go unused here.
-#[allow(dead_code)]
 pub fn as_png(img: &DynamicImage) -> Vec<u8> {
     let mut bytes = Vec::new();
     img.write_to(
