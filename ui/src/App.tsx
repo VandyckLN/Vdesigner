@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { Sidebar, type Screen } from "./components/Sidebar";
+import { Colors } from "./screens/Colors";
 import { Editor } from "./screens/Editor";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "tif", "svg"];
 
 export function App() {
+  const [screen, setScreen] = useState<Screen>("imagem");
+
   const pickFile = async () => {
     const selected = await open({
       multiple: false,
@@ -17,5 +22,14 @@ export function App() {
     return typeof selected === "string" ? selected : null;
   };
 
-  return <Editor onOpenFile={pickFile} onPickDirectory={pickDirectory} />;
+  return (
+    <div className="app-shell">
+      <Sidebar current={screen} onChange={setScreen} />
+      {screen === "imagem" ? (
+        <Editor onOpenFile={pickFile} onPickDirectory={pickDirectory} />
+      ) : (
+        <Colors onPickDirectory={pickDirectory} />
+      )}
+    </div>
+  );
 }

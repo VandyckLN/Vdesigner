@@ -272,3 +272,40 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* A lateral separa-se do conteúdo por fio de 1px, como todo o resto da
+   identidade. O acento marca apenas o estado selecionado — nunca preenche. */
+.app-shell { display: grid; grid-template-columns: auto 1fr; min-height: 100vh; }
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--gutter) 0;
+  border-right: 1px solid var(--rule);
+  background: var(--bg-2);
+}
+
+.sidebar-mark { display: block; width: 22px; margin: 0 auto var(--gutter); color: var(--dim); }
+.sidebar-mark svg { width: 100%; height: auto; display: block; }
+
+.sidebar-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 76px;
+  padding: 10px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.sidebar-tab[aria-selected="true"] { color: var(--ink); }
+.sidebar-tab[aria-selected="true"] .sidebar-glyph { color: var(--accent); }
+.sidebar-tab:hover { color: var(--ink); }
+.sidebar-glyph { font-size: 18px; line-height: 1; }
