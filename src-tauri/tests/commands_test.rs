@@ -39,3 +39,12 @@ fn rejects_an_empty_stem() {
     let err = resolve_output_path(dir.path(), "   ", "webp", true).unwrap_err();
     assert!(matches!(err, ExportError::InvalidName(_)));
 }
+
+#[test]
+fn rejects_a_directory_that_does_not_exist() {
+    let dir = tempfile::tempdir().unwrap();
+    let missing = dir.path().join("nao-existe");
+
+    let err = resolve_output_path(&missing, "hero", "webp", false).unwrap_err();
+    assert!(matches!(err, ExportError::InvalidDirectory(_)));
+}

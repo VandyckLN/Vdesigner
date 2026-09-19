@@ -9,6 +9,9 @@ pub enum ExportError {
     #[error("nome de arquivo inválido: {0}")]
     InvalidName(String),
 
+    #[error("a pasta de saída não existe: {0}")]
+    InvalidDirectory(String),
+
     #[error("falha ao gravar: {0}")]
     Io(String),
 }
@@ -31,6 +34,9 @@ pub fn resolve_output_path(
         return Err(ExportError::InvalidName(format!(
             "o nome não pode conter separador de caminho: {trimmed}"
         )));
+    }
+    if !directory.is_dir() {
+        return Err(ExportError::InvalidDirectory(directory.display().to_string()));
     }
 
     let path = directory.join(format!("{trimmed}.{extension}"));
