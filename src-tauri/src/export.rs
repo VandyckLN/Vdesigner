@@ -36,7 +36,9 @@ pub fn resolve_output_path(
         )));
     }
     if !directory.is_dir() {
-        return Err(ExportError::InvalidDirectory(directory.display().to_string()));
+        return Err(ExportError::InvalidDirectory(
+            directory.display().to_string(),
+        ));
     }
 
     let path = directory.join(format!("{trimmed}.{extension}"));
