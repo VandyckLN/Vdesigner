@@ -1,11 +1,13 @@
 use crate::export::{resolve_output_path, write_bytes};
+use crate::palette_io;
 use crate::session::{Session, SourceImage};
 use base64::Engine;
 use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, State};
 use vdesigner_core::{
-    decode, is_svg, rasterize_svg, run_job, run_preview, EncodeSpec, Job, OutputFormat,
+    decode, format as format_color_value, harmonies, is_svg, parse_hex, ramp, rasterize_svg,
+    run_job, run_preview, ColorFormat, EncodeSpec, Job, OutputFormat, Palette,
 };
 
 const PREVIEW_MAX_SIDE: u32 = 2048;
@@ -224,4 +226,65 @@ fn preview_png(bytes: &[u8]) -> CommandResult<String> {
     };
     let output = run_preview(bytes, &job, PREVIEW_MAX_SIDE).map_err(|e| e.to_string())?;
     Ok(base64::engine::general_purpose::STANDARD.encode(&output.bytes))
+}
+
+#[derive(Serialize)]
+pub struct PaletteSnapshot {
+    pub palette: Palette,
+    pub on_disk: String,
+}
+
+#[derive(Serialize)]
+pub struct Variations {
+    pub ramp: Vec<String>,
+    pub complementary: String,
+    pub analogous: Vec<String>,
+    pub triad: Vec<String>,
+}
+
+/// Split out of the command so it can be tested without a Tauri runtime.
+pub fn variations_for(hex: &str) -> Result<Variations, String> {
+    let color = parse_hex(hex).map_err(|e| e.to_string())?;
+    let hex_of = |c| format_color_value(c, ColorFormat::Hex);
+    let harmony = harmonies(color);
+
+    Ok(Variations {
+        ramp: ramp(color).into_iter().map(hex_of).collect(),
+        complementary: hex_of(harmony.complementary),
+        analogous: harmony.analogous.into_iter().map(hex_of).collect(),
+        triad: harmony.triad.into_iter().map(hex_of).collect(),
+    })
+}
+
+#[tauri::command]
+pub fn color_variations(hex: String) -> CommandResult<Variations> {
+    variations_for(&hex)
+}
+
+#[tauri::command]
+pub fn format_color(hex: String, format: ColorFormat) -> CommandResult<String> {
+    let color = parse_hex(&hex).map_err(|e| e.to_string())?;
+    Ok(format_color_value(color, format))
+}
+
+#[tauri::command]
+pub fn load_palette(dir: String) -> CommandResult<Option<PaletteSnapshot>> {
+    palette_io::load(std::path::Path::new(&dir))
+        .map(|loaded| {
+            loaded.map(|l| PaletteSnapshot {
+                palette: l.palette,
+                on_disk: l.on_disk,
+            })
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_palette(
+    dir: String,
+    palette: Palette,
+    expected: Option<String>,
+) -> CommandResult<String> {
+    palette_io::save(std::path::Path::new(&dir), &palette, expected.as_deref())
+        .map_err(|e| e.to_string())
 }

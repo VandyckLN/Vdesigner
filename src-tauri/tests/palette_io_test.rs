@@ -164,3 +164,22 @@ fn um_save_bem_sucedido_nao_deixa_arquivo_temporario_para_tras() {
         "nenhum arquivo temporário deveria sobrar na pasta, encontrado: {entries:?}"
     );
 }
+
+/// The command layer hands the interface plain hex strings, because the screen
+/// only ever draws them. Keeping the conversion here means the React side
+/// never reimplements colour maths.
+#[test]
+fn variations_are_returned_as_hex_ready_to_draw() {
+    let v: vdesigner::commands::Variations =
+        vdesigner::commands::variations_for("#8A9096").unwrap();
+    assert_eq!(v.ramp.len(), 10);
+    assert_eq!(v.ramp[5], "#8A9096");
+    assert_eq!(v.analogous.len(), 2);
+    assert_eq!(v.triad.len(), 2);
+    assert!(v.complementary.starts_with('#'));
+}
+
+#[test]
+fn variations_of_an_invalid_hex_report_the_problem() {
+    assert!(vdesigner::commands::variations_for("nada disso").is_err());
+}

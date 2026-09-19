@@ -107,6 +107,44 @@ export interface ExportProgress {
 
 const EXPORT_PROGRESS_EVENT = "export-progress";
 
+export type ColorFormat = "Hex" | "Rgb" | "Hsl" | "Oklch";
+export type Generated = "css" | "tailwind";
+
+export interface Swatch {
+  nome: string;
+  hex: string;
+  rampa: boolean;
+}
+
+export interface GradientRef {
+  nome: string;
+  de: string;
+  para: string;
+}
+
+export interface Palette {
+  versao: number;
+  nome: string;
+  gerar: Generated[];
+  cores: Swatch[];
+  degrades: GradientRef[];
+}
+
+export interface PaletteSnapshot {
+  palette: Palette;
+  on_disk: string;
+}
+
+export interface Variations {
+  ramp: string[];
+  complementary: string;
+  analogous: string[];
+  triad: string[];
+}
+
+/** Rungs of the generated scale, mirroring vdesigner_core::RAMP_STEPS. */
+export const RAMP_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
+
 export const api = {
   openImage: (path: string) => invoke<ImageInfo>("open_image", { path }),
   preview: (job: Job) => invoke<PreviewResult>("preview", { job }),
@@ -115,4 +153,10 @@ export const api = {
     invoke<ExportResult>("export", { job, outputDir, fileStem, overwrite }),
   onExportProgress: (handler: (progress: ExportProgress) => void): Promise<UnlistenFn> =>
     listen<ExportProgress>(EXPORT_PROGRESS_EVENT, (event) => handler(event.payload)),
+  loadPalette: (dir: string) => invoke<PaletteSnapshot | null>("load_palette", { dir }),
+  savePalette: (dir: string, palette: Palette, expected: string | null) =>
+    invoke<string>("save_palette", { dir, palette, expected }),
+  colorVariations: (hex: string) => invoke<Variations>("color_variations", { hex }),
+  formatColor: (hex: string, format: ColorFormat) =>
+    invoke<string>("format_color", { hex, format }),
 };
