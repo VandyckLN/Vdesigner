@@ -3,3 +3,5 @@
 /ui/dist
 /src-tauri/gen
 /.superpowers/
+/.claude/
+/docs/superpowers/

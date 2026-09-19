@@ -10,10 +10,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      # A versão vai no nome da ref; `@master` não passa toolchain nenhuma e a
+      # action aborta com "'toolchain' is a required input".
+      - uses: dtolnay/rust-toolchain@1.98
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      # O rav1e, dentro do ravif, monta suas rotinas de AVIF em assembly e não
+      # compila sem o montador.
+      - name: Install NASM
+        shell: pwsh
+        run: |
+          choco install nasm -y --no-progress
+          echo "C:\Program Files\NASM" >> $env:GITHUB_PATH
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all

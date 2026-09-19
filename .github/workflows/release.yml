@@ -16,6 +16,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      # O rav1e, dentro do ravif, monta suas rotinas de AVIF em assembly e não
+      # compila sem o montador.
+      - name: Install NASM
+        shell: pwsh
+        run: |
+          choco install nasm -y --no-progress
+          echo "C:\Program Files\NASM" >> $env:GITHUB_PATH
       - run: npm --prefix ui ci
       - run: cargo install tauri-cli --version "^2" --locked
       - run: cargo tauri build
