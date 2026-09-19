@@ -6,6 +6,7 @@ mod encode;
 mod error;
 mod filters;
 mod job;
+mod palette;
 mod resize;
 mod svg;
 
@@ -18,5 +19,9 @@ pub use encode::{encode, EncodeSpec, OutputFormat};
 pub use error::CoreError;
 pub use filters::{adjust, denoise, sharpen, AdjustSpec, DenoiseSpec, SharpenSpec};
 pub use job::{run_job, run_preview, Job, JobOutput, Progress, Step};
+pub use palette::{
+    palette_from_json, palette_to_json, validate_palette, Generated, GradientRef, Palette, Swatch,
+    PALETTE_FILE_NAME, PALETTE_FORMAT_VERSION,
+};
 pub use resize::{resize, FitMode, ResizeSpec, MAX_SIDE};
 pub use svg::{is_svg, rasterize_svg};
