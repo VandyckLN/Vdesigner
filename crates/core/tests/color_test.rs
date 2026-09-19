@@ -163,3 +163,22 @@ fn hex_round_trips_through_format_and_parse() {
         assert_eq!(parse_hex(&format(c, ColorFormat::Hex)).unwrap(), c);
     }
 }
+
+/// Non-ASCII hex input must return an error, not panic on multi-byte UTF-8
+/// character boundaries. This validates that the parser checks for ASCII hex
+/// digits before ever slicing.
+#[test]
+fn rejects_non_ascii_hex_without_panicking() {
+    // 6-byte string with multi-byte UTF-8 character (é) at a boundary where
+    // slicing without validation would panic. This must return Err, not panic.
+    assert!(matches!(
+        parse_hex("a\u{e9}bcd"),
+        Err(CoreError::InvalidColor(_))
+    ));
+
+    // Different byte layout: multi-byte character at the start.
+    assert!(matches!(
+        parse_hex("\u{e9}abcdef"),
+        Err(CoreError::InvalidColor(_))
+    ));
+}

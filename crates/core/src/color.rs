@@ -189,6 +189,14 @@ pub fn parse_hex(text: &str) -> Result<Color, CoreError> {
         }
     };
 
+    // Validate that all characters are ASCII hex digits before slicing to avoid panicking
+    // on multi-byte UTF-8 characters at non-character-boundary offsets.
+    if !expanded.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(CoreError::InvalidColor(std::format!(
+            "`{text}` não é hexadecimal"
+        )));
+    }
+
     let channel = |slice: &str| {
         u8::from_str_radix(slice, 16)
             .map_err(|_| CoreError::InvalidColor(std::format!("`{text}` não é hexadecimal")))
