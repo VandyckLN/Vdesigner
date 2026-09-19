@@ -1,6 +1,12 @@
 {
   "name": "vdesigner-ui",
   "private": true,
+  "author": "Vandyck (VandyckLN) <https://github.com/VandyckLN>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VandyckLN/Vdesigner.git"
+  },
   "type": "module",
   "engines": {
     "node": ">=20"
