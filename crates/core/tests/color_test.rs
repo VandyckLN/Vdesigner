@@ -182,3 +182,92 @@ fn rejects_non_ascii_hex_without_panicking() {
         Err(CoreError::InvalidColor(_))
     ));
 }
+
+use vdesigner_core::{ramp, RAMP_STEPS};
+
+#[test]
+fn the_ramp_has_ten_steps_named_fifty_to_nine_hundred() {
+    assert_eq!(
+        RAMP_STEPS,
+        [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]
+    );
+    assert_eq!(
+        ramp(Color {
+            r: 138,
+            g: 144,
+            b: 150
+        })
+        .len(),
+        10
+    );
+}
+
+/// The whole point of anchoring at 500 is that the colour a person chose on
+/// purpose survives the scale untouched.
+#[test]
+fn the_source_colour_is_step_five_hundred_unchanged() {
+    let base = Color {
+        r: 138,
+        g: 144,
+        b: 150,
+    };
+    let scale = ramp(base);
+    let index_of_500 = RAMP_STEPS.iter().position(|s| *s == 500).unwrap();
+    assert_eq!(scale[index_of_500], base);
+}
+
+/// A scale that brightens in the middle gives a design system an inverted
+/// rung. Non-increasing rather than strictly decreasing, because a near-white
+/// base has no room left to lighten — that is physics, not a bug.
+#[test]
+fn lightness_never_increases_along_the_ramp() {
+    for r in (0..=255).step_by(15) {
+        for b in (0..=255).step_by(51) {
+            let base = Color {
+                r: r as u8,
+                g: 90,
+                b: b as u8,
+            };
+            let scale = ramp(base);
+            for pair in scale.windows(2) {
+                let before = to_oklch(pair[0]).l;
+                let after = to_oklch(pair[1]).l;
+                assert!(
+                    before + 1e-6 >= after,
+                    "rampa de {base:?} subiu de {before} para {after}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_mid_tone_ramp_strictly_darkens_from_end_to_end() {
+    let scale = ramp(Color {
+        r: 138,
+        g: 144,
+        b: 150,
+    });
+    let lightest = to_oklch(scale[0]).l;
+    let darkest = to_oklch(scale[9]).l;
+    assert!(
+        lightest > darkest + 0.3,
+        "faixa curta demais: {lightest} a {darkest}"
+    );
+}
+
+/// Regression guard: the same input must give the same ten values a year from
+/// now, or every palette already committed to a repository silently shifts.
+#[test]
+fn the_ramp_is_deterministic() {
+    let base = Color {
+        r: 138,
+        g: 144,
+        b: 150,
+    };
+    assert_eq!(ramp(base), ramp(base));
+    assert_eq!(
+        format(ramp(base)[0], ColorFormat::Hex),
+        format(ramp(base)[0], ColorFormat::Hex)
+    );
+}

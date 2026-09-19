@@ -208,3 +208,45 @@ pub fn parse_hex(text: &str) -> Result<Color, CoreError> {
         b: channel(&expanded[4..6])?,
     })
 }
+
+/// The ten rungs every mainstream design system already speaks. Fixed rather
+/// than configurable: inventing a different vocabulary only creates
+/// translation work for whoever consumes the generated CSS.
+pub const RAMP_STEPS: [u16; 10] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
+
+/// Index of 500 in `RAMP_STEPS`, where the source colour sits.
+const ANCHOR: usize = 5;
+
+/// Lightness the top of the scale aims for, and the bottom. Both are pulled
+/// back to the base when the base is already past them, which is what keeps a
+/// near-white or near-black colour from producing a scale that turns around.
+const L_LIGHTEST: f64 = 0.97;
+const L_DARKEST: f64 = 0.15;
+
+pub fn ramp(base: Color) -> [Color; 10] {
+    let anchor = to_oklch(base);
+    let lightest = L_LIGHTEST.max(anchor.l);
+    let darkest = L_DARKEST.min(anchor.l);
+
+    let mut out = [base; 10];
+    for (index, slot) in out.iter_mut().enumerate() {
+        if index == ANCHOR {
+            // Returned verbatim, not round-tripped, so the anchor is exactly
+            // the bytes the person picked rather than the nearest colour the
+            // conversion happens to land on.
+            continue;
+        }
+        let lightness = if index < ANCHOR {
+            let t = (ANCHOR - index) as f64 / ANCHOR as f64;
+            anchor.l + (lightest - anchor.l) * t
+        } else {
+            let t = (index - ANCHOR) as f64 / (RAMP_STEPS.len() - 1 - ANCHOR) as f64;
+            anchor.l + (darkest - anchor.l) * t
+        };
+        *slot = from_oklch(Oklch {
+            l: lightness,
+            ..anchor
+        });
+    }
+    out
+}
