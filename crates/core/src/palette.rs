@@ -82,6 +82,7 @@ pub fn palette_to_json(palette: &Palette) -> Result<String, CoreError> {
 
 pub fn validate_palette(palette: &Palette) -> Result<(), CoreError> {
     let mut seen = HashSet::new();
+    let mut colour_names = HashSet::new();
     for swatch in &palette.cores {
         validate_name(&swatch.nome)?;
         if !seen.insert(swatch.nome.as_str()) {
@@ -90,13 +91,23 @@ pub fn validate_palette(palette: &Palette) -> Result<(), CoreError> {
                 swatch.nome
             )));
         }
+        colour_names.insert(swatch.nome.as_str());
         swatch.color()?;
     }
 
     for gradient in &palette.degrades {
         validate_name(&gradient.nome)?;
+        // Gradients and swatches both become `--<nome>` CSS custom properties,
+        // so they share one namespace: a name collision would make one
+        // declaration silently overwrite the other via the CSS cascade.
+        if !seen.insert(gradient.nome.as_str()) {
+            return Err(CoreError::InvalidParameter(std::format!(
+                "o nome `{}` já está em uso por outra cor ou degradê",
+                gradient.nome
+            )));
+        }
         for endpoint in [&gradient.de, &gradient.para] {
-            if !seen.contains(endpoint.as_str()) {
+            if !colour_names.contains(endpoint.as_str()) {
                 return Err(CoreError::InvalidParameter(std::format!(
                     "o degradê `{}` aponta para a cor `{endpoint}`, que não existe na paleta",
                     gradient.nome

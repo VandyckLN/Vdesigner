@@ -115,6 +115,33 @@ fn rejects_a_gradient_pointing_at_a_colour_that_does_not_exist() {
     assert!(matches!(error, CoreError::InvalidParameter(ref m) if m.contains("inexistente")));
 }
 
+/// Gradients and colours both become `--<nome>` CSS custom properties, so a
+/// gradient named the same as a colour would silently overwrite it via the
+/// CSS cascade.
+#[test]
+fn rejects_a_gradient_named_the_same_as_a_colour() {
+    let mut palette = sample();
+    palette.degrades[0].nome = palette.cores[0].nome.clone();
+    let error = validate_palette(&palette).unwrap_err();
+    assert!(
+        matches!(error, CoreError::InvalidParameter(ref m) if m.contains(&palette.cores[0].nome)),
+        "erro pouco claro: {error}"
+    );
+}
+
+#[test]
+fn rejects_two_gradients_with_the_same_name() {
+    let mut palette = sample();
+    let mut segundo = palette.degrades[0].clone();
+    segundo.nome = palette.degrades[0].nome.clone();
+    palette.degrades.push(segundo);
+    let error = validate_palette(&palette).unwrap_err();
+    assert!(
+        matches!(error, CoreError::InvalidParameter(ref m) if m.contains(&palette.degrades[0].nome)),
+        "erro pouco claro: {error}"
+    );
+}
+
 use vdesigner_core::{to_css_vars, to_tailwind};
 
 #[test]
@@ -164,8 +191,13 @@ fn a_gradient_becomes_a_linear_gradient_variable() {
         css.contains("--fundo: linear-gradient("),
         "faltou o degradê:\n{css}"
     );
+    // Pins the gradient declaration itself (variable name, direction, and the
+    // exact `de` colour it starts from), not just the presence of the hex
+    // value anywhere in the output — that hex is also emitted by the plain
+    // `--tinta:` swatch declaration above, so a bare `contains("#EDE8DE")`
+    // would pass even if the gradient pointed the wrong way.
     assert!(
-        css.contains("#EDE8DE"),
+        css.contains("--fundo: linear-gradient(90deg, #EDE8DE,"),
         "o degradê não começa na cor `tinta`:\n{css}"
     );
 }
