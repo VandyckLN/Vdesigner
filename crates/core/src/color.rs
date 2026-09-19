@@ -5,6 +5,7 @@
 //! hues and spaces a tonal scale unevenly; OKLCH is perceptually uniform, so
 //! equal numeric steps read as equal visual steps.
 
+use crate::error::CoreError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,4 +100,103 @@ pub fn from_oklch(lch: Oklch) -> Color {
 /// wrong colour instead of the nearest real one.
 fn to_byte(channel: f64) -> u8 {
     (channel.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ColorFormat {
+    Hex,
+    Rgb,
+    Hsl,
+    Oklch,
+}
+
+pub fn format(color: Color, format: ColorFormat) -> String {
+    match format {
+        ColorFormat::Hex => std::format!("#{:02X}{:02X}{:02X}", color.r, color.g, color.b),
+        ColorFormat::Rgb => std::format!("rgb({}, {}, {})", color.r, color.g, color.b),
+        ColorFormat::Hsl => {
+            let (h, s, l) = to_hsl(color);
+            std::format!(
+                "hsl({}, {}%, {}%)",
+                h.round(),
+                (s * 100.0).round(),
+                (l * 100.0).round()
+            )
+        }
+        ColorFormat::Oklch => {
+            let lch = to_oklch(color);
+            // Chroma of an achromatic colour is a rounding crumb, not a value;
+            // printing it would put `oklch(100% 0.0000001 250)` on screen.
+            let chroma = if lch.c < 1e-4 { 0.0 } else { lch.c };
+            let hue = if chroma == 0.0 { 0.0 } else { lch.h };
+            std::format!(
+                "oklch({}% {} {})",
+                round_to(lch.l * 100.0, 1),
+                round_to(chroma, 3),
+                round_to(hue, 1)
+            )
+        }
+    }
+}
+
+/// Trims a float for display and drops a trailing `.0`, so the common case
+/// reads `0` rather than `0.000`.
+fn round_to(value: f64, places: u32) -> String {
+    let factor = 10_f64.powi(places as i32);
+    let rounded = (value * factor).round() / factor;
+    if (rounded - rounded.trunc()).abs() < f64::EPSILON {
+        std::format!("{}", rounded.trunc() as i64)
+    } else {
+        std::format!("{rounded}")
+    }
+}
+
+fn to_hsl(color: Color) -> (f64, f64, f64) {
+    let r = f64::from(color.r) / 255.0;
+    let g = f64::from(color.g) / 255.0;
+    let b = f64::from(color.b) / 255.0;
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let lightness = (max + min) / 2.0;
+    let delta = max - min;
+
+    if delta.abs() < f64::EPSILON {
+        return (0.0, 0.0, lightness);
+    }
+
+    let saturation = delta / (1.0 - (2.0 * lightness - 1.0).abs());
+    let hue = if (max - r).abs() < f64::EPSILON {
+        60.0 * (((g - b) / delta).rem_euclid(6.0))
+    } else if (max - g).abs() < f64::EPSILON {
+        60.0 * ((b - r) / delta + 2.0)
+    } else {
+        60.0 * ((r - g) / delta + 4.0)
+    };
+
+    (hue.rem_euclid(360.0), saturation, lightness)
+}
+
+pub fn parse_hex(text: &str) -> Result<Color, CoreError> {
+    let digits = text.trim().trim_start_matches('#');
+
+    let expanded = match digits.len() {
+        3 => digits.chars().flat_map(|c| [c, c]).collect::<String>(),
+        6 => digits.to_string(),
+        other => {
+            return Err(CoreError::InvalidColor(std::format!(
+                "esperado 3 ou 6 dígitos hexadecimais, recebido {other}"
+            )))
+        }
+    };
+
+    let channel = |slice: &str| {
+        u8::from_str_radix(slice, 16)
+            .map_err(|_| CoreError::InvalidColor(std::format!("`{text}` não é hexadecimal")))
+    };
+
+    Ok(Color {
+        r: channel(&expanded[0..2])?,
+        g: channel(&expanded[2..4])?,
+        b: channel(&expanded[4..6])?,
+    })
 }

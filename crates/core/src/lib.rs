@@ -9,7 +9,7 @@ mod job;
 mod resize;
 mod svg;
 
-pub use color::{from_oklch, to_oklch, Color, Oklch};
+pub use color::{format, from_oklch, parse_hex, to_oklch, Color, ColorFormat, Oklch};
 pub use decode::{decode, detect_format, InputFormat};
 pub use encode::{encode, EncodeSpec, OutputFormat};
 pub use error::CoreError;
