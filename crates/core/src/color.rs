@@ -223,6 +223,12 @@ const ANCHOR: usize = 5;
 const L_LIGHTEST: f64 = 0.97;
 const L_DARKEST: f64 = 0.15;
 
+/// Generates a perceptually uniform ten-step tonal scale from a base colour,
+/// with the source colour returned byte-for-byte unchanged at step 500. Chroma
+/// and hue remain constant across the scale; high chroma near white has no sRGB
+/// answer, so the extreme steps come out less saturated than the arithmetic
+/// requests — a deliberate simplification. Reducing chroma toward the ends is a
+/// later refinement.
 pub fn ramp(base: Color) -> [Color; 10] {
     let anchor = to_oklch(base);
     let lightest = L_LIGHTEST.max(anchor.l);
