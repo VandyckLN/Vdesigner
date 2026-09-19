@@ -35,6 +35,8 @@ full transitive dependency graph.
 
 | Package | License |
 |---|---|
+| @fontsource-variable/gabarito | OFL-1.1 |
+| @fontsource-variable/spline-sans-mono | OFL-1.1 |
 | @tauri-apps/api | Apache-2.0 OR MIT |
 | @tauri-apps/plugin-dialog | MIT OR Apache-2.0 |
 | react | MIT |
@@ -44,6 +46,7 @@ full transitive dependency graph.
 
 | Package | License |
 |---|---|
+| @tauri-apps/cli | MIT OR Apache-2.0 |
 | @testing-library/jest-dom | MIT |
 | @testing-library/react | MIT |
 | @testing-library/user-event | MIT |

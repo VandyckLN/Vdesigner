@@ -4,6 +4,7 @@ import { PreviewPane } from "../components/PreviewPane";
 import { ResizeControls } from "../components/ResizeControls";
 import { QualityControls } from "../components/QualityControls";
 import { ExportBar } from "../components/ExportBar";
+import { VdkMark } from "../components/VdkMark";
 
 const DEFAULT_SETTINGS: EditorSettings = {
   width: null,
@@ -26,9 +27,11 @@ const PREVIEW_DEBOUNCE_MS = 250;
 interface EditorProps {
   /** Injected so tests do not need the Tauri dialog plugin. */
   onOpenFile: () => Promise<string | null>;
+  /** Injected so tests do not need the Tauri dialog plugin. */
+  onPickDirectory: () => Promise<string | null>;
 }
 
-export function Editor({ onOpenFile }: EditorProps) {
+export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
   const [image, setImage] = useState<ImageInfo | null>(null);
   const [settings, setSettings] = useState<EditorSettings>(DEFAULT_SETTINGS);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -75,15 +78,23 @@ export function Editor({ onOpenFile }: EditorProps) {
   return (
     <main className="editor">
       <header className="editor__header">
+        <span className="editor__brand">
+          <VdkMark />
+          <span className="editor__brand-name">Vdesigner</span>
+        </span>
         <button type="button" onClick={open}>
           Abrir imagem
         </button>
         {image && (
-          <span className="editor__dimensions">
+          <span className="editor__dimensions mono">
             {image.width} × {image.height}
           </span>
         )}
-        {busy && <span role="status">processando…</span>}
+        {busy && (
+          <span role="status" className="mono">
+            processando…
+          </span>
+        )}
       </header>
 
       {error && <p role="alert" className="editor__error">{error}</p>}
@@ -108,6 +119,7 @@ export function Editor({ onOpenFile }: EditorProps) {
               key={image.file_stem}
               settings={settings}
               fileStem={image.file_stem}
+              onPickDirectory={onPickDirectory}
               onError={setError}
             />
           </aside>

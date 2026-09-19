@@ -28,7 +28,7 @@ export function QualityControls({ settings, onChange }: QualityControlsProps) {
   ) => (
     <>
       <label htmlFor={id}>
-        {label}: {value}
+        {label} <span className="mono">{value}</span>
       </label>
       <input
         id={id}

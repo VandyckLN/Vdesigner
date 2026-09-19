@@ -12,5 +12,10 @@ export function App() {
     return typeof selected === "string" ? selected : null;
   };
 
-  return <Editor onOpenFile={pickFile} />;
+  const pickDirectory = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    return typeof selected === "string" ? selected : null;
+  };
+
+  return <Editor onOpenFile={pickFile} onPickDirectory={pickDirectory} />;
 }

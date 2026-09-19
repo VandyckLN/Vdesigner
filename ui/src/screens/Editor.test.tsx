@@ -26,7 +26,7 @@ describe("Editor", () => {
   });
 
   it("mostra o estado vazio antes de abrir uma imagem", () => {
-    render(<Editor onOpenFile={vi.fn()} />);
+    render(<Editor onOpenFile={vi.fn()} onPickDirectory={vi.fn()} />);
     expect(screen.getByText(/clique em abrir imagem/i)).toBeInTheDocument();
   });
 
@@ -38,10 +38,32 @@ describe("Editor", () => {
       preview_png_base64: "AAA",
     });
 
-    render(<Editor onOpenFile={async () => "C:/temp/hero.jpg"} />);
+    render(<Editor onOpenFile={async () => "C:/temp/hero.jpg"} onPickDirectory={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: /abrir imagem/i }));
 
     await waitFor(() => expect(screen.getByText(/1920 × 1080/)).toBeInTheDocument());
+  });
+
+  it("preenche a pasta de saída com o que o diálogo devolve", async () => {
+    openImage.mockResolvedValue({
+      width: 800,
+      height: 400,
+      file_stem: "hero",
+      preview_png_base64: "AAA",
+    });
+
+    render(
+      <Editor
+        onOpenFile={async () => "C:/temp/hero.jpg"}
+        onPickDirectory={async () => "D:/Fotos/Saida"}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /abrir imagem/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /escolher pasta/i }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/pasta de saída/i)).toHaveValue("D:/Fotos/Saida"),
+    );
   });
 
   it("desabilita o campo de altura enquanto a proporção está travada", async () => {
@@ -52,7 +74,7 @@ describe("Editor", () => {
       preview_png_base64: "AAA",
     });
 
-    render(<Editor onOpenFile={async () => "C:/temp/hero.jpg"} />);
+    render(<Editor onOpenFile={async () => "C:/temp/hero.jpg"} onPickDirectory={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: /abrir imagem/i }));
     await waitFor(() => expect(screen.getByLabelText(/altura/i)).toBeDisabled());
   });
