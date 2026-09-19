@@ -27,7 +27,7 @@ describe("Editor", () => {
 
   it("mostra o estado vazio antes de abrir uma imagem", () => {
     render(<Editor onOpenFile={vi.fn()} />);
-    expect(screen.getByText(/arraste uma imagem/i)).toBeInTheDocument();
+    expect(screen.getByText(/clique em abrir imagem/i)).toBeInTheDocument();
   });
 
   it("mostra as dimensões depois de abrir uma imagem", async () => {

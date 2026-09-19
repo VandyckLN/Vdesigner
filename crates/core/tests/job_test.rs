@@ -10,12 +10,19 @@ fn png_input(width: u32, height: u32) -> Vec<u8> {
 }
 
 fn webp_output() -> EncodeSpec {
-    EncodeSpec { format: OutputFormat::WebP, quality: 82, lossless: false }
+    EncodeSpec {
+        format: OutputFormat::WebP,
+        quality: 82,
+        lossless: false,
+    }
 }
 
 #[test]
 fn runs_an_empty_job_as_a_pure_format_conversion() {
-    let job = Job { steps: vec![], output: webp_output() };
+    let job = Job {
+        steps: vec![],
+        output: webp_output(),
+    };
     let out = run_job(&png_input(40, 20), &job, &mut |_| {}).unwrap();
     assert_eq!((out.width, out.height), (40, 20));
     assert!(!out.bytes.is_empty());
@@ -31,7 +38,10 @@ fn applies_steps_in_order() {
                 fit: FitMode::Contain,
                 pad_color: [0, 0, 0, 0],
             }),
-            Step::Sharpen(SharpenSpec { amount: 0.5, radius: 1.0 }),
+            Step::Sharpen(SharpenSpec {
+                amount: 0.5,
+                radius: 1.0,
+            }),
         ],
         output: webp_output(),
     };
@@ -44,7 +54,10 @@ fn reports_progress_once_per_step_plus_encoding() {
     let job = Job {
         steps: vec![
             Step::Denoise(DenoiseSpec { radius: 1 }),
-            Step::Sharpen(SharpenSpec { amount: 0.5, radius: 1.0 }),
+            Step::Sharpen(SharpenSpec {
+                amount: 0.5,
+                radius: 1.0,
+            }),
         ],
         output: webp_output(),
     };
@@ -66,7 +79,11 @@ fn accepts_svg_input_and_rasterizes_it() {
             fit: FitMode::Contain,
             pad_color: [0, 0, 0, 0],
         })],
-        output: EncodeSpec { format: OutputFormat::Png, quality: 100, lossless: true },
+        output: EncodeSpec {
+            format: OutputFormat::Png,
+            quality: 100,
+            lossless: true,
+        },
     };
     let out = run_job(svg, &job, &mut |_| {}).unwrap();
     assert_eq!((out.width, out.height), (64, 64));
@@ -74,7 +91,10 @@ fn accepts_svg_input_and_rasterizes_it() {
 
 #[test]
 fn preview_limits_the_longest_side() {
-    let job = Job { steps: vec![], output: webp_output() };
+    let job = Job {
+        steps: vec![],
+        output: webp_output(),
+    };
     let out = run_preview(&png_input(4000, 2000), &job, 512).unwrap();
     assert_eq!(out.width, 512);
     assert_eq!(out.height, 256);
@@ -82,7 +102,10 @@ fn preview_limits_the_longest_side() {
 
 #[test]
 fn preview_does_not_upscale_small_images() {
-    let job = Job { steps: vec![], output: webp_output() };
+    let job = Job {
+        steps: vec![],
+        output: webp_output(),
+    };
     let out = run_preview(&png_input(100, 50), &job, 512).unwrap();
     assert_eq!((out.width, out.height), (100, 50));
 }
@@ -100,14 +123,69 @@ fn preview_keeps_an_explicit_resize_proportional_to_the_reduction() {
         output: webp_output(),
     };
     let out = run_preview(&png_input(4000, 2000), &job, 512).unwrap();
-    assert!(out.width <= 512, "prévia não pode exceder o limite, veio {}", out.width);
+    assert!(
+        out.width <= 512,
+        "prévia não pode exceder o limite, veio {}",
+        out.width
+    );
 }
 
 #[test]
 fn propagates_a_decode_failure() {
-    let job = Job { steps: vec![], output: webp_output() };
+    let job = Job {
+        steps: vec![],
+        output: webp_output(),
+    };
     let err = run_job(b"garbage", &job, &mut |_| {}).unwrap_err();
     assert!(matches!(err, CoreError::UnsupportedFormat));
+}
+
+/// The literal the UI actually puts on the wire, copied byte for byte from
+/// `WIRE_CONTRACT_JSON` in ui/src/api.test.ts, which asserts `buildJob`
+/// serialises to exactly this. Renaming a field on either side now breaks a
+/// test instead of silently desynchronising the two shapes.
+#[test]
+fn contract_json_from_the_ui_deserializes_into_a_job() {
+    const WIRE_CONTRACT_JSON: &str = concat!(
+        r#"{"steps":[{"Resize":{"width":800,"height":600,"fit":"Stretch","pad_color":[0,0,0,0]}},"#,
+        r#"{"Denoise":{"radius":2}},{"Sharpen":{"amount":1,"radius":1}},"#,
+        r#"{"Adjust":{"brightness":0.1,"contrast":0,"saturation":0}}],"#,
+        r#""output":{"format":"WebP","quality":82,"lossless":false}}"#,
+    );
+
+    let job: Job = serde_json::from_str(WIRE_CONTRACT_JSON).expect("contrato de fio inválido");
+
+    assert_eq!(job.steps.len(), 4);
+    match &job.steps[0] {
+        Step::Resize(spec) => {
+            assert_eq!((spec.width, spec.height), (Some(800), Some(600)));
+            assert_eq!(spec.fit, FitMode::Stretch);
+            assert_eq!(spec.pad_color, [0, 0, 0, 0]);
+        }
+        other => panic!("esperava Resize, veio {other:?}"),
+    }
+    match &job.steps[1] {
+        Step::Denoise(spec) => assert_eq!(spec.radius, 2),
+        other => panic!("esperava Denoise, veio {other:?}"),
+    }
+    match &job.steps[2] {
+        Step::Sharpen(spec) => {
+            assert_eq!(spec.amount, 1.0);
+            assert_eq!(spec.radius, 1.0);
+        }
+        other => panic!("esperava Sharpen, veio {other:?}"),
+    }
+    match &job.steps[3] {
+        Step::Adjust(spec) => {
+            assert_eq!(spec.brightness, 0.1);
+            assert_eq!(spec.contrast, 0.0);
+            assert_eq!(spec.saturation, 0.0);
+        }
+        other => panic!("esperava Adjust, veio {other:?}"),
+    }
+    assert_eq!(job.output.format, OutputFormat::WebP);
+    assert_eq!(job.output.quality, 82);
+    assert!(!job.output.lossless);
 }
 
 #[test]

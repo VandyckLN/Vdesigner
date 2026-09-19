@@ -1,6 +1,6 @@
 mod common;
 
-use vdesigner_core::{resize, CoreError, FitMode, ResizeSpec};
+use vdesigner_core::{resize, CoreError, FitMode, ResizeSpec, MAX_SIDE};
 
 fn spec(width: Option<u32>, height: Option<u32>, fit: FitMode) -> ResizeSpec {
     spec_with_pad(width, height, fit, [0, 0, 0, 0])
@@ -12,7 +12,12 @@ fn spec_with_pad(
     fit: FitMode,
     pad_color: [u8; 4],
 ) -> ResizeSpec {
-    ResizeSpec { width, height, fit, pad_color }
+    ResizeSpec {
+        width,
+        height,
+        fit,
+        pad_color,
+    }
 }
 
 #[test]
@@ -112,6 +117,18 @@ fn rejects_a_spec_without_any_dimension() {
 fn rejects_zero_as_a_dimension() {
     let img = common::gradient(10, 10);
     let err = resize(&img, &spec(Some(0), None, FitMode::Contain)).unwrap_err();
+    assert!(matches!(err, CoreError::InvalidParameter(_)));
+}
+
+#[test]
+fn rejects_a_dimension_above_the_maximum_side() {
+    // Without this bound the destination buffer allocation aborts the process
+    // rather than returning an error the UI can show.
+    let img = common::gradient(10, 10);
+    let err = resize(&img, &spec(Some(MAX_SIDE + 1), None, FitMode::Contain)).unwrap_err();
+    assert!(matches!(err, CoreError::InvalidParameter(_)));
+
+    let err = resize(&img, &spec(None, Some(MAX_SIDE + 1), FitMode::Contain)).unwrap_err();
     assert!(matches!(err, CoreError::InvalidParameter(_)));
 }
 

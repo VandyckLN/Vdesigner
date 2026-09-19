@@ -26,6 +26,8 @@
   "bundle": {
     "active": true,
     "targets": ["msi"],
-    "icon": ["icons/icon.ico"]
+    "icon": ["icons/icon.ico"],
+    "publisher": "Vandyck",
+    "copyright": "Copyright (c) 2026 Vandyck"
   }
 }

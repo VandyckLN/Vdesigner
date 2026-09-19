@@ -76,7 +76,11 @@ pub fn run_preview(input: &[u8], job: &Job, max_side: u32) -> Result<JobOutput, 
     // rescaled by the same factor the source was reduced by.
     let scale_ratio = reduced.width() as f64 / source_width as f64;
     let scaled_job = Job {
-        steps: job.steps.iter().map(|s| scale_step(s, scale_ratio)).collect(),
+        steps: job
+            .steps
+            .iter()
+            .map(|s| scale_step(s, scale_ratio))
+            .collect(),
         output: job.output,
     };
 
@@ -98,12 +102,36 @@ fn load(input: &[u8], job: &Job) -> Result<DynamicImage, CoreError> {
     }
 }
 
+/// Rescales every pixel-space quantity in a step by the factor the source was
+/// reduced by, so the preview shows the same *effective* operation the export
+/// will perform. Filter radii count: they are documented in pixels, so leaving
+/// them alone would make a 2px blur far stronger relative to a reduced image
+/// than to the full-resolution one.
 fn scale_step(step: &Step, ratio: f64) -> Step {
     match step {
         Step::Resize(spec) => Step::Resize(ResizeSpec {
-            width: spec.width.map(|w| ((w as f64 * ratio).round() as u32).max(1)),
-            height: spec.height.map(|h| ((h as f64 * ratio).round() as u32).max(1)),
+            width: spec
+                .width
+                .map(|w| ((w as f64 * ratio).round() as u32).max(1)),
+            height: spec
+                .height
+                .map(|h| ((h as f64 * ratio).round() as u32).max(1)),
             ..*spec
+        }),
+        Step::Sharpen(spec) => Step::Sharpen(SharpenSpec {
+            // No floor needed: `sharpen` already clamps the blur radius at 0.1.
+            radius: spec.radius * ratio as f32,
+            ..*spec
+        }),
+        Step::Denoise(spec) => Step::Denoise(DenoiseSpec {
+            // An integer radius that rounds down to zero would silently disable
+            // the filter in the preview while the export still applies it, so a
+            // radius that was active stays active.
+            radius: if spec.radius == 0 {
+                0
+            } else {
+                ((spec.radius as f64 * ratio).round() as u32).max(1)
+            },
         }),
         other => other.clone(),
     }
@@ -135,11 +163,128 @@ fn execute(
                 "ajustando tom"
             }
         };
-        progress(Progress { current: index as u32 + 1, total, label });
+        progress(Progress {
+            current: index as u32 + 1,
+            total,
+            label,
+        });
     }
 
     let bytes = encode(&image, &job.output)?;
-    progress(Progress { current: total, total, label: "codificando" });
+    progress(Progress {
+        current: total,
+        total,
+        label: "codificando",
+    });
 
-    Ok(JobOutput { bytes, width: image.width(), height: image.height() })
+    Ok(JobOutput {
+        bytes,
+        width: image.width(),
+        height: image.height(),
+    })
+}
+
+/// `scale_step` is private and its whole job is to return values, not pixels,
+/// so it is checked here rather than through `run_preview`'s encoded output.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn resize_step(width: Option<u32>, height: Option<u32>) -> Step {
+        Step::Resize(ResizeSpec {
+            width,
+            height,
+            fit: FitMode::Contain,
+            pad_color: [0, 0, 0, 0],
+        })
+    }
+
+    #[test]
+    fn scales_resize_dimensions() {
+        let scaled = scale_step(&resize_step(Some(2000), Some(1000)), 0.25);
+        match scaled {
+            Step::Resize(spec) => assert_eq!((spec.width, spec.height), (Some(500), Some(250))),
+            other => panic!("esperava Resize, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn keeps_a_resize_dimension_at_one_pixel_minimum() {
+        let scaled = scale_step(&resize_step(Some(3), None), 0.01);
+        match scaled {
+            Step::Resize(spec) => assert_eq!((spec.width, spec.height), (Some(1), None)),
+            other => panic!("esperava Resize, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn scales_the_sharpen_radius_and_leaves_the_amount_alone() {
+        let scaled = scale_step(
+            &Step::Sharpen(SharpenSpec {
+                amount: 0.8,
+                radius: 4.0,
+            }),
+            0.25,
+        );
+        match scaled {
+            Step::Sharpen(spec) => {
+                assert!(
+                    (spec.radius - 1.0).abs() < f32::EPSILON,
+                    "raio deveria virar 1.0, veio {}",
+                    spec.radius
+                );
+                assert!((spec.amount - 0.8).abs() < f32::EPSILON);
+            }
+            other => panic!("esperava Sharpen, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn scales_the_denoise_radius() {
+        let scaled = scale_step(&Step::Denoise(DenoiseSpec { radius: 8 }), 0.5);
+        match scaled {
+            Step::Denoise(spec) => assert_eq!(spec.radius, 4),
+            other => panic!("esperava Denoise, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn never_scales_an_active_denoise_radius_down_to_zero() {
+        // Rounding to 0 would disable the filter in the preview while the
+        // export still applied it, which is the worse divergence of the two.
+        let scaled = scale_step(&Step::Denoise(DenoiseSpec { radius: 2 }), 0.05);
+        match scaled {
+            Step::Denoise(spec) => assert_eq!(spec.radius, 1),
+            other => panic!("esperava Denoise, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn keeps_a_disabled_denoise_disabled() {
+        let scaled = scale_step(&Step::Denoise(DenoiseSpec { radius: 0 }), 0.5);
+        match scaled {
+            Step::Denoise(spec) => assert_eq!(spec.radius, 0),
+            other => panic!("esperava Denoise, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn leaves_adjust_untouched_because_it_has_no_pixel_space_values() {
+        let scaled = scale_step(
+            &Step::Adjust(AdjustSpec {
+                brightness: 0.2,
+                contrast: -0.1,
+                saturation: 0.5,
+            }),
+            0.25,
+        );
+        match scaled {
+            Step::Adjust(spec) => {
+                assert!((spec.brightness - 0.2).abs() < f32::EPSILON);
+                assert!((spec.contrast + 0.1).abs() < f32::EPSILON);
+                assert!((spec.saturation - 0.5).abs() < f32::EPSILON);
+            }
+            other => panic!("esperava Adjust, veio {other:?}"),
+        }
+    }
 }

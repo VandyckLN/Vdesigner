@@ -38,9 +38,9 @@ export function Editor({ onOpenFile }: EditorProps) {
 
   const open = useCallback(async () => {
     setError(null);
-    const path = await onOpenFile();
-    if (!path) return;
     try {
+      const path = await onOpenFile();
+      if (!path) return;
       const info = await api.openImage(path);
       setImage(info);
       setSettings(DEFAULT_SETTINGS);
@@ -89,7 +89,7 @@ export function Editor({ onOpenFile }: EditorProps) {
       {error && <p role="alert" className="editor__error">{error}</p>}
 
       {!image ? (
-        <p className="editor__empty">Arraste uma imagem aqui ou clique em Abrir imagem.</p>
+        <p className="editor__empty">Clique em Abrir imagem.</p>
       ) : (
         <div className="editor__body">
           <PreviewPane src={previewSrc} />
@@ -101,7 +101,15 @@ export function Editor({ onOpenFile }: EditorProps) {
               onChange={setSettings}
             />
             <QualityControls settings={settings} onChange={setSettings} />
-            <ExportBar settings={settings} fileStem={image.file_stem} onError={setError} />
+            {/* Remounting on a new image resets the export name and the
+                overwrite flag, which would otherwise carry over from the
+                previously opened file. */}
+            <ExportBar
+              key={image.file_stem}
+              settings={settings}
+              fileStem={image.file_stem}
+              onError={setError}
+            />
           </aside>
         </div>
       )}

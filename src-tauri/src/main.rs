@@ -13,5 +13,8 @@ fn main() {
             commands::export
         ])
         .run(tauri::generate_context!())
+        // Tauri's own bootstrap idiom: no recovery is possible if the builder
+        // itself fails to start, so this is the one carve-out from the
+        // no-`unwrap`/no-`expect` rule the rest of the codebase follows.
         .expect("erro ao iniciar o Vdesigner");
 }

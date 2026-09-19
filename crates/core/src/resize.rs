@@ -3,6 +3,12 @@ use fast_image_resize::images::Image as FirImage;
 use fast_image_resize::{FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer};
 use image::{DynamicImage, Rgba, RgbaImage};
 
+/// Upper bound on any requested side. The destination buffer is allocated
+/// infallibly (`width * height * 4` bytes), so an unbounded value from the UI
+/// would abort the process instead of returning an error. 16384 is the common
+/// texture/format ceiling and sits far above any real use for this tool.
+pub const MAX_SIDE: u32 = 16384;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum FitMode {
     /// Fits inside the target and pads the remaining area. Never crops.
@@ -65,6 +71,11 @@ fn validate(spec: &ResizeSpec) -> Result<(), CoreError> {
             return Err(CoreError::InvalidParameter(
                 "as dimensões devem ser maiores que zero".into(),
             ));
+        }
+        if value > MAX_SIDE {
+            return Err(CoreError::InvalidParameter(format!(
+                "as dimensões devem ficar até {MAX_SIDE} pixels, recebido {value}"
+            )));
         }
     }
     if spec.fit == FitMode::Stretch && (spec.width.is_none() || spec.height.is_none()) {

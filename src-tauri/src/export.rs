@@ -23,7 +23,9 @@ pub fn resolve_output_path(
 ) -> Result<PathBuf, ExportError> {
     let trimmed = stem.trim();
     if trimmed.is_empty() {
-        return Err(ExportError::InvalidName("o nome não pode ficar vazio".into()));
+        return Err(ExportError::InvalidName(
+            "o nome não pode ficar vazio".into(),
+        ));
     }
     if trimmed.contains(['/', '\\', ':']) || trimmed.contains("..") {
         return Err(ExportError::InvalidName(format!(

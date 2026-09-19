@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.85
+      - uses: dtolnay/rust-toolchain@1.98
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -23,18 +23,18 @@ jobs:
       - name: Build portable zip
         shell: pwsh
         run: |
-          Compress-Archive -Path src-tauri/target/release/vdesigner.exe -DestinationPath vdesigner-portable-windows-x64.zip
+          Compress-Archive -Path target/release/vdesigner.exe -DestinationPath vdesigner-portable-windows-x64.zip
 
       - name: Compute checksums
         shell: pwsh
         run: |
-          $msi = Get-ChildItem -Recurse -Filter *.msi src-tauri/target/release/bundle
+          $msi = Get-ChildItem -Recurse -Filter *.msi target/release/bundle
           Get-FileHash $msi.FullName -Algorithm SHA256 | Format-List | Out-File checksums.txt
           Get-FileHash vdesigner-portable-windows-x64.zip -Algorithm SHA256 | Format-List | Out-File -Append checksums.txt
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            src-tauri/target/release/bundle/msi/*.msi
+            target/release/bundle/msi/*.msi
             vdesigner-portable-windows-x64.zip
             checksums.txt

@@ -1,5 +1,9 @@
 import type { EditorSettings, FitMode } from "../api";
 
+/** Mirrors vdesigner_core::MAX_SIDE. The engine is what actually enforces it;
+ *  this only keeps the browser's own validation in step. */
+const MAX_SIDE = 16384;
+
 interface ResizeControlsProps {
   settings: EditorSettings;
   sourceWidth: number;
@@ -30,6 +34,7 @@ export function ResizeControls({ settings, sourceWidth, sourceHeight, onChange }
         id="width"
         type="number"
         min={1}
+        max={MAX_SIDE}
         value={settings.width ?? ""}
         placeholder={String(sourceWidth)}
         onChange={(e) => setWidth(e.target.value)}
@@ -40,6 +45,7 @@ export function ResizeControls({ settings, sourceWidth, sourceHeight, onChange }
         id="height"
         type="number"
         min={1}
+        max={MAX_SIDE}
         disabled={settings.lockRatio}
         value={settings.height ?? ""}
         placeholder={String(sourceHeight)}
@@ -58,6 +64,11 @@ export function ResizeControls({ settings, sourceWidth, sourceHeight, onChange }
               ...settings,
               lockRatio: e.target.checked,
               fit: e.target.checked ? "Contain" : settings.fit,
+              // Re-locking hides the height field, and `buildJob` then stops
+              // sending the value. Dropping it here keeps a height typed while
+              // unlocked from later producing a resize with neither dimension,
+              // which the engine rejects with no way back through the UI.
+              height: e.target.checked ? null : settings.height,
             })
           }
         />

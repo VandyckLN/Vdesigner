@@ -57,7 +57,10 @@ pub fn open_image(path: String, session: State<Session>) -> CommandResult<ImageI
         preview_png_base64: preview_png(&bytes)?,
     };
 
-    *session.source.lock().map_err(|_| "estado corrompido".to_string())? = Some(SourceImage {
+    *session
+        .source
+        .lock()
+        .map_err(|_| "estado corrompido".to_string())? = Some(SourceImage {
         bytes,
         width: image.width(),
         height: image.height(),
@@ -69,14 +72,21 @@ pub fn open_image(path: String, session: State<Session>) -> CommandResult<ImageI
 
 #[tauri::command]
 pub fn preview(job: Job, session: State<Session>) -> CommandResult<PreviewResult> {
-    let guard = session.source.lock().map_err(|_| "estado corrompido".to_string())?;
+    let guard = session
+        .source
+        .lock()
+        .map_err(|_| "estado corrompido".to_string())?;
     let source = guard.as_ref().ok_or("nenhuma imagem aberta")?;
 
     // The preview is always served as PNG, so the canvas shows exactly the
     // pixels the pipeline produced, without a second lossy pass.
     let png_job = Job {
         steps: job.steps.clone(),
-        output: EncodeSpec { format: OutputFormat::Png, quality: 100, lossless: true },
+        output: EncodeSpec {
+            format: OutputFormat::Png,
+            quality: 100,
+            lossless: true,
+        },
     };
     let output =
         run_preview(&source.bytes, &png_job, PREVIEW_MAX_SIDE).map_err(|e| e.to_string())?;
@@ -96,17 +106,28 @@ pub fn export(
     overwrite: bool,
     session: State<Session>,
 ) -> CommandResult<ExportResult> {
-    let guard = session.source.lock().map_err(|_| "estado corrompido".to_string())?;
+    let guard = session
+        .source
+        .lock()
+        .map_err(|_| "estado corrompido".to_string())?;
     let source = guard.as_ref().ok_or("nenhuma imagem aberta")?;
 
     let extension = extension_for(job.output.format);
-    let path = resolve_output_path(std::path::Path::new(&output_dir), &file_stem, extension, overwrite)
-        .map_err(|e| e.to_string())?;
+    let path = resolve_output_path(
+        std::path::Path::new(&output_dir),
+        &file_stem,
+        extension,
+        overwrite,
+    )
+    .map_err(|e| e.to_string())?;
 
     let output = run_job(&source.bytes, &job, &mut |_| {}).map_err(|e| e.to_string())?;
     let bytes_written = write_bytes(&path, &output.bytes).map_err(|e| e.to_string())?;
 
-    Ok(ExportResult { path: path.display().to_string(), bytes_written })
+    Ok(ExportResult {
+        path: path.display().to_string(),
+        bytes_written,
+    })
 }
 
 fn extension_for(format: OutputFormat) -> &'static str {
@@ -123,7 +144,11 @@ fn extension_for(format: OutputFormat) -> &'static str {
 fn preview_png(bytes: &[u8]) -> CommandResult<String> {
     let job = Job {
         steps: vec![],
-        output: EncodeSpec { format: OutputFormat::Png, quality: 100, lossless: true },
+        output: EncodeSpec {
+            format: OutputFormat::Png,
+            quality: 100,
+            lossless: true,
+        },
     };
     let output = run_preview(bytes, &job, PREVIEW_MAX_SIDE).map_err(|e| e.to_string())?;
     Ok(base64::engine::general_purpose::STANDARD.encode(&output.bytes))

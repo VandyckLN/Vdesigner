@@ -30,8 +30,16 @@ fn rasterizes_at_any_requested_size_keeping_the_ratio() {
 fn renders_the_expected_colours() {
     let img = rasterize_svg(CIRCLE, None, None).unwrap();
     let rgba = img.to_rgba8();
-    assert_eq!(rgba.get_pixel(50, 25).0[0..3], [255, 0, 0], "centro vermelho");
-    assert_eq!(rgba.get_pixel(2, 2).0[0..3], [255, 255, 255], "canto branco");
+    assert_eq!(
+        rgba.get_pixel(50, 25).0[0..3],
+        [255, 0, 0],
+        "centro vermelho"
+    );
+    assert_eq!(
+        rgba.get_pixel(2, 2).0[0..3],
+        [255, 255, 255],
+        "canto branco"
+    );
 }
 
 #[test]

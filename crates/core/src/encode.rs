@@ -93,11 +93,21 @@ fn composite_over_white(img: &DynamicImage) -> image::RgbImage {
 fn encode_webp(img: &DynamicImage, spec: &EncodeSpec) -> Result<Vec<u8>, CoreError> {
     let rgba = img.to_rgba8();
     let encoder = webp::Encoder::from_rgba(rgba.as_raw(), img.width(), img.height());
-    let memory = if spec.lossless {
-        encoder.encode_lossless()
-    } else {
-        encoder.encode(spec.quality as f32)
-    };
+    // `encode`/`encode_lossless` are thin wrappers that `.unwrap()` the result,
+    // which would abort the process on a libwebp failure such as exceeding the
+    // 16383px per-side limit. `encode_simple` is the same call, fallibly.
+    // 75.0 is the quality `encode_lossless` passes; libwebp ignores it when
+    // lossless is on, so the two modes stay byte-identical to the old calls.
+    let memory = encoder
+        .encode_simple(
+            spec.lossless,
+            if spec.lossless {
+                75.0
+            } else {
+                spec.quality as f32
+            },
+        )
+        .map_err(|e| CoreError::Encode(format!("falha ao codificar WebP: {e:?}")))?;
     Ok(memory.to_vec())
 }
 

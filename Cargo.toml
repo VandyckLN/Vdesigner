@@ -16,5 +16,7 @@ webp = "0.3"
 ravif = "0.11"
 rgb = "0.8"
 fast_image_resize = { version = "5", features = ["image"] }
-imageproc = "0.25"
+# Default features pull in `image/default`, which would undo the trimmed
+# feature list above and drag in a second, duplicated AVIF encoder.
+imageproc = { version = "0.25", default-features = false, features = ["rayon"] }
 resvg = "0.45"

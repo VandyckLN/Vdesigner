@@ -36,21 +36,43 @@ fn denoise_reduces_local_contrast() {
     let img = checkerboard(32);
     let before = local_contrast(&img);
     let after = local_contrast(&denoise(&img, &DenoiseSpec { radius: 1 }).unwrap());
-    assert!(after < before, "denoise deveria suavizar: {after} < {before}");
+    assert!(
+        after < before,
+        "denoise deveria suavizar: {after} < {before}"
+    );
 }
 
 #[test]
 fn sharpen_increases_local_contrast_on_a_soft_image() {
     let soft = denoise(&checkerboard(32), &DenoiseSpec { radius: 2 }).unwrap();
     let before = local_contrast(&soft);
-    let after = local_contrast(&sharpen(&soft, &SharpenSpec { amount: 1.5, radius: 1.0 }).unwrap());
-    assert!(after > before, "sharpen deveria realçar: {after} > {before}");
+    let after = local_contrast(
+        &sharpen(
+            &soft,
+            &SharpenSpec {
+                amount: 1.5,
+                radius: 1.0,
+            },
+        )
+        .unwrap(),
+    );
+    assert!(
+        after > before,
+        "sharpen deveria realçar: {after} > {before}"
+    );
 }
 
 #[test]
 fn zero_amount_sharpen_returns_the_image_unchanged() {
     let img = common::gradient(16, 16);
-    let out = sharpen(&img, &SharpenSpec { amount: 0.0, radius: 1.0 }).unwrap();
+    let out = sharpen(
+        &img,
+        &SharpenSpec {
+            amount: 0.0,
+            radius: 1.0,
+        },
+    )
+    .unwrap();
     assert_eq!(out.to_rgba8().into_raw(), img.to_rgba8().into_raw());
 }
 
@@ -64,14 +86,30 @@ fn zero_radius_denoise_returns_the_image_unchanged() {
 #[test]
 fn brightness_raises_every_channel() {
     let img = DynamicImage::ImageRgba8(RgbaImage::from_pixel(4, 4, Rgba([100, 100, 100, 255])));
-    let out = adjust(&img, &AdjustSpec { brightness: 0.2, contrast: 0.0, saturation: 0.0 }).unwrap();
+    let out = adjust(
+        &img,
+        &AdjustSpec {
+            brightness: 0.2,
+            contrast: 0.0,
+            saturation: 0.0,
+        },
+    )
+    .unwrap();
     assert!(out.to_rgba8().get_pixel(0, 0).0[0] > 100);
 }
 
 #[test]
 fn saturation_of_minus_one_produces_gray() {
     let img = DynamicImage::ImageRgba8(RgbaImage::from_pixel(4, 4, Rgba([200, 40, 40, 255])));
-    let out = adjust(&img, &AdjustSpec { brightness: 0.0, contrast: 0.0, saturation: -1.0 }).unwrap();
+    let out = adjust(
+        &img,
+        &AdjustSpec {
+            brightness: 0.0,
+            contrast: 0.0,
+            saturation: -1.0,
+        },
+    )
+    .unwrap();
     let pixel = out.to_rgba8().get_pixel(0, 0).0;
     assert!(
         pixel[0].abs_diff(pixel[1]) <= 2 && pixel[1].abs_diff(pixel[2]) <= 2,
@@ -82,13 +120,29 @@ fn saturation_of_minus_one_produces_gray() {
 #[test]
 fn adjust_preserves_alpha() {
     let img = DynamicImage::ImageRgba8(RgbaImage::from_pixel(4, 4, Rgba([10, 20, 30, 77])));
-    let out = adjust(&img, &AdjustSpec { brightness: 0.5, contrast: 0.5, saturation: 0.5 }).unwrap();
+    let out = adjust(
+        &img,
+        &AdjustSpec {
+            brightness: 0.5,
+            contrast: 0.5,
+            saturation: 0.5,
+        },
+    )
+    .unwrap();
     assert_eq!(out.to_rgba8().get_pixel(0, 0).0[3], 77);
 }
 
 #[test]
 fn rejects_out_of_range_adjustments() {
     let img = common::gradient(4, 4);
-    let err = adjust(&img, &AdjustSpec { brightness: 5.0, contrast: 0.0, saturation: 0.0 }).unwrap_err();
+    let err = adjust(
+        &img,
+        &AdjustSpec {
+            brightness: 5.0,
+            contrast: 0.0,
+            saturation: 0.0,
+        },
+    )
+    .unwrap_err();
     assert!(matches!(err, CoreError::InvalidParameter(_)));
 }
