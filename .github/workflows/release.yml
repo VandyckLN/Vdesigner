@@ -35,13 +35,13 @@ jobs:
       - name: Compute checksums
         shell: pwsh
         run: |
-          $msi = Get-ChildItem -Recurse -Filter *.msi target/release/bundle
-          Get-FileHash $msi.FullName -Algorithm SHA256 | Format-List | Out-File checksums.txt
+          $setup = Get-ChildItem -Recurse -Filter *-setup.exe target/release/bundle/nsis
+          Get-FileHash $setup.FullName -Algorithm SHA256 | Format-List | Out-File checksums.txt
           Get-FileHash vdesigner-portable-windows-x64.zip -Algorithm SHA256 | Format-List | Out-File -Append checksums.txt
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*-setup.exe
             vdesigner-portable-windows-x64.zip
             checksums.txt
