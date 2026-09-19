@@ -127,3 +127,94 @@ fn validate_name(name: &str) -> Result<(), CoreError> {
         )))
     }
 }
+
+use crate::color::{format, gradient, ramp, ColorFormat, RAMP_STEPS};
+
+pub const CSS_FILE_NAME: &str = "cores.css";
+pub const TAILWIND_FILE_NAME: &str = "cores.tailwind.json";
+
+/// Steps drawn for a gradient in the generated CSS. Five is enough for the
+/// browser to interpolate smoothly between them while keeping the declaration
+/// short enough to read in a diff.
+const GRADIENT_STOPS: usize = 5;
+
+pub fn to_css_vars(palette: &Palette) -> Result<String, CoreError> {
+    validate_palette(palette)?;
+
+    let mut out = String::from(":root {\n");
+
+    for swatch in &palette.cores {
+        let color = swatch.color()?;
+        if swatch.rampa {
+            for (step, shade) in RAMP_STEPS.iter().zip(ramp(color)) {
+                out.push_str(&std::format!(
+                    "  --{}-{step}: {};\n",
+                    swatch.nome,
+                    format(shade, ColorFormat::Hex)
+                ));
+            }
+        } else {
+            out.push_str(&std::format!(
+                "  --{}: {};\n",
+                swatch.nome,
+                format(color, ColorFormat::Hex)
+            ));
+        }
+    }
+
+    for reference in &palette.degrades {
+        let stops = gradient_stops(palette, reference)?;
+        out.push_str(&std::format!(
+            "  --{}: linear-gradient(90deg, {});\n",
+            reference.nome,
+            stops.join(", ")
+        ));
+    }
+
+    out.push_str("}\n");
+    Ok(out)
+}
+
+fn gradient_stops(palette: &Palette, reference: &GradientRef) -> Result<Vec<String>, CoreError> {
+    let find = |name: &str| {
+        palette
+            .cores
+            .iter()
+            .find(|s| s.nome == name)
+            .ok_or_else(|| {
+                CoreError::InvalidParameter(std::format!(
+                    "o degradê `{}` aponta para a cor `{name}`, que não existe na paleta",
+                    reference.nome
+                ))
+            })
+    };
+
+    let from = find(&reference.de)?.color()?;
+    let to = find(&reference.para)?.color()?;
+
+    Ok(gradient(from, to, GRADIENT_STOPS)?
+        .into_iter()
+        .map(|c| format(c, ColorFormat::Hex))
+        .collect())
+}
+
+pub fn to_tailwind(palette: &Palette) -> Result<String, CoreError> {
+    validate_palette(palette)?;
+
+    let mut root = serde_json::Map::new();
+    for swatch in &palette.cores {
+        let color = swatch.color()?;
+        if swatch.rampa {
+            let mut scale = serde_json::Map::new();
+            for (step, shade) in RAMP_STEPS.iter().zip(ramp(color)) {
+                scale.insert(step.to_string(), format(shade, ColorFormat::Hex).into());
+            }
+            root.insert(swatch.nome.clone(), scale.into());
+        } else {
+            root.insert(swatch.nome.clone(), format(color, ColorFormat::Hex).into());
+        }
+    }
+
+    serde_json::to_string_pretty(&root)
+        .map_err(|e| CoreError::InvalidParameter(std::format!("falha ao gerar o Tailwind: {e}")))
+}

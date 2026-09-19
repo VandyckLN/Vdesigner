@@ -114,3 +114,73 @@ fn rejects_a_gradient_pointing_at_a_colour_that_does_not_exist() {
     let error = validate_palette(&palette).unwrap_err();
     assert!(matches!(error, CoreError::InvalidParameter(ref m) if m.contains("inexistente")));
 }
+
+use vdesigner_core::{to_css_vars, to_tailwind};
+
+#[test]
+fn a_plain_colour_becomes_one_css_variable() {
+    let css = to_css_vars(&sample()).unwrap();
+    assert!(
+        css.contains("--tinta: #EDE8DE;"),
+        "faltou a variável simples:\n{css}"
+    );
+}
+
+/// The scale is derived at generation time and never stored, so this is the
+/// only place the ten rungs become text.
+#[test]
+fn a_colour_marked_as_ramp_becomes_ten_css_variables() {
+    let css = to_css_vars(&sample()).unwrap();
+    for step in [50, 100, 200, 300, 400, 500, 600, 700, 800, 900] {
+        assert!(
+            css.contains(&format!("--acento-{step}:")),
+            "faltou --acento-{step}:\n{css}"
+        );
+    }
+}
+
+#[test]
+fn a_colour_marked_as_ramp_does_not_also_emit_a_bare_variable() {
+    let css = to_css_vars(&sample()).unwrap();
+    assert!(
+        !css.contains("--acento:"),
+        "emitiu --acento: além da escala:\n{css}"
+    );
+}
+
+#[test]
+fn the_ramp_anchor_keeps_the_colour_the_person_chose() {
+    let css = to_css_vars(&sample()).unwrap();
+    assert!(
+        css.contains("--acento-500: #8A9096;"),
+        "o 500 não é a cor original:\n{css}"
+    );
+}
+
+#[test]
+fn a_gradient_becomes_a_linear_gradient_variable() {
+    let css = to_css_vars(&sample()).unwrap();
+    assert!(
+        css.contains("--fundo: linear-gradient("),
+        "faltou o degradê:\n{css}"
+    );
+    assert!(
+        css.contains("#EDE8DE"),
+        "o degradê não começa na cor `tinta`:\n{css}"
+    );
+}
+
+#[test]
+fn the_css_is_wrapped_in_a_root_block() {
+    let css = to_css_vars(&sample()).unwrap();
+    assert!(css.trim_start().starts_with(":root {"));
+    assert!(css.trim_end().ends_with('}'));
+}
+
+#[test]
+fn the_tailwind_fragment_is_valid_json_keyed_by_colour_name() {
+    let json = to_tailwind(&sample()).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed["tinta"], "#EDE8DE");
+    assert_eq!(parsed["acento"]["500"], "#8A9096");
+}
