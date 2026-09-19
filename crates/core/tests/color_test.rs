@@ -183,7 +183,7 @@ fn rejects_non_ascii_hex_without_panicking() {
     ));
 }
 
-use vdesigner_core::{ramp, RAMP_STEPS};
+use vdesigner_core::{gradient, ramp, RAMP_STEPS};
 
 #[test]
 fn the_ramp_has_ten_steps_named_fifty_to_nine_hundred() {
@@ -270,4 +270,83 @@ fn the_ramp_is_deterministic() {
         format(ramp(base)[0], ColorFormat::Hex),
         format(ramp(base)[0], ColorFormat::Hex)
     );
+}
+
+#[test]
+fn the_gradient_starts_at_the_first_colour_and_ends_at_the_second() {
+    let from = Color {
+        r: 237,
+        g: 232,
+        b: 222,
+    };
+    let to = Color {
+        r: 11,
+        g: 12,
+        b: 14,
+    };
+    let ramp = gradient(from, to, 7).unwrap();
+    assert_eq!(ramp.len(), 7);
+    assert_eq!(ramp[0], from);
+    assert_eq!(ramp[6], to);
+}
+
+#[test]
+fn a_two_step_gradient_is_just_the_two_ends() {
+    let from = Color { r: 255, g: 0, b: 0 };
+    let to = Color { r: 0, g: 0, b: 255 };
+    assert_eq!(gradient(from, to, 2).unwrap(), vec![from, to]);
+}
+
+#[test]
+fn rejects_fewer_than_two_steps() {
+    let c = Color { r: 0, g: 0, b: 0 };
+    assert!(matches!(
+        gradient(c, c, 1),
+        Err(CoreError::InvalidParameter(_))
+    ));
+}
+
+/// Hue is circular: going from 350° to 10° must cross 0°, not travel the long
+/// way through 180°. Taking the wrong arc is what puts a grey or a foreign
+/// hue in the middle of a gradient.
+#[test]
+fn the_gradient_takes_the_short_way_around_the_hue_circle() {
+    let from = from_oklch(Oklch {
+        l: 0.6,
+        c: 0.15,
+        h: 350.0,
+    });
+    let to = from_oklch(Oklch {
+        l: 0.6,
+        c: 0.15,
+        h: 10.0,
+    });
+    let middle = gradient(from, to, 3).unwrap()[1];
+    let hue = to_oklch(middle).h;
+    let distance_from_zero = hue.min(360.0 - hue);
+    assert!(
+        distance_from_zero < 15.0,
+        "o meio caiu em {hue}°, pelo lado longo"
+    );
+}
+
+#[test]
+fn lightness_moves_steadily_from_one_end_to_the_other() {
+    let ramp = gradient(
+        Color {
+            r: 237,
+            g: 232,
+            b: 222,
+        },
+        Color {
+            r: 11,
+            g: 12,
+            b: 14,
+        },
+        9,
+    )
+    .unwrap();
+    for pair in ramp.windows(2) {
+        assert!(to_oklch(pair[0]).l + 1e-6 >= to_oklch(pair[1]).l);
+    }
 }

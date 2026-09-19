@@ -256,3 +256,51 @@ pub fn ramp(base: Color) -> [Color; 10] {
     }
     out
 }
+
+/// Interpolates a gradient between two colours over a given number of steps,
+/// returning the endpoints verbatim to ensure exact byte-fidelity to the input.
+/// Interpolation happens in OKLCH space: lightness, chroma, and hue all move
+/// linearly, but hue wraps around the shortest arc of the circle to avoid
+/// dragging the middle through unrelated hues when the endpoints straddle 0°.
+pub fn gradient(from: Color, to: Color, steps: usize) -> Result<Vec<Color>, CoreError> {
+    if steps < 2 {
+        return Err(CoreError::InvalidParameter(
+            "um degradê precisa de pelo menos dois passos".into(),
+        ));
+    }
+
+    let start = to_oklch(from);
+    let end = to_oklch(to);
+    let hue_delta = shortest_hue_delta(start.h, end.h);
+
+    let mut out = Vec::with_capacity(steps);
+    for index in 0..steps {
+        if index == 0 {
+            out.push(from);
+            continue;
+        }
+        if index == steps - 1 {
+            out.push(to);
+            continue;
+        }
+        let t = index as f64 / (steps - 1) as f64;
+        out.push(from_oklch(Oklch {
+            l: start.l + (end.l - start.l) * t,
+            c: start.c + (end.c - start.c) * t,
+            h: (start.h + hue_delta * t).rem_euclid(360.0),
+        }));
+    }
+    Ok(out)
+}
+
+/// Signed distance around the hue circle, never longer than half a turn.
+/// Interpolating the raw difference would walk 340° instead of 20° when the
+/// ends straddle 0°, dragging the middle through unrelated hues.
+fn shortest_hue_delta(from: f64, to: f64) -> f64 {
+    let raw = (to - from).rem_euclid(360.0);
+    if raw > 180.0 {
+        raw - 360.0
+    } else {
+        raw
+    }
+}

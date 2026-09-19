@@ -10,7 +10,7 @@ mod resize;
 mod svg;
 
 pub use color::{
-    format, from_oklch, parse_hex, ramp, to_oklch, Color, ColorFormat, Oklch, RAMP_STEPS,
+    format, from_oklch, gradient, parse_hex, ramp, to_oklch, Color, ColorFormat, Oklch, RAMP_STEPS,
 };
 pub use decode::{decode, detect_format, InputFormat};
 pub use encode::{encode, EncodeSpec, OutputFormat};
