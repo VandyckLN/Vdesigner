@@ -1,5 +1,6 @@
 //! Pure image engine. Knows nothing about Tauri, about Windows, or about any UI.
 
+mod color;
 mod decode;
 mod encode;
 mod error;
@@ -8,6 +9,7 @@ mod job;
 mod resize;
 mod svg;
 
+pub use color::{from_oklch, to_oklch, Color, Oklch};
 pub use decode::{decode, detect_format, InputFormat};
 pub use encode::{encode, EncodeSpec, OutputFormat};
 pub use error::CoreError;

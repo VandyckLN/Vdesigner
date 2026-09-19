@@ -13,4 +13,7 @@ pub enum CoreError {
 
     #[error("parâmetro inválido: {0}")]
     InvalidParameter(String),
+
+    #[error("cor inválida: {0}")]
+    InvalidColor(String),
 }
