@@ -304,3 +304,37 @@ fn shortest_hue_delta(from: f64, to: f64) -> f64 {
         raw
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct Harmony {
+    pub complementary: Color,
+    /// Thirty degrees to each side, in the order [-30°, +30°].
+    pub analogous: [Color; 2],
+    /// A third of a turn to each side, in the order [-120°, +120°].
+    pub triad: [Color; 2],
+}
+
+/// Derives four harmonious companion colours from a base colour using the
+/// standard five-colour schemes. Complementary is opposite on the hue wheel
+/// at 180°; analogous pairs flank the base by 30° on each side; triadic colours
+/// sit at thirds of a turn (±120°). Lightness and chroma are preserved across
+/// all companions so they read as members of the same family rather than as
+/// unrelated colours — high saturation near the gamut edge may shift hue
+/// slightly during gamut clipping.
+pub fn harmonies(base: Color) -> Harmony {
+    let rotate = |degrees: f64| {
+        let lch = to_oklch(base);
+        // Lightness and chroma are preserved so the companions read as members
+        // of the same family rather than as unrelated colours.
+        from_oklch(Oklch {
+            h: (lch.h + degrees).rem_euclid(360.0),
+            ..lch
+        })
+    };
+
+    Harmony {
+        complementary: rotate(180.0),
+        analogous: [rotate(-30.0), rotate(30.0)],
+        triad: [rotate(-120.0), rotate(120.0)],
+    }
+}

@@ -350,3 +350,108 @@ fn lightness_moves_steadily_from_one_end_to_the_other() {
         assert!(to_oklch(pair[0]).l + 1e-6 >= to_oklch(pair[1]).l);
     }
 }
+
+use vdesigner_core::harmonies;
+
+#[test]
+fn the_complementary_sits_half_a_turn_away_on_the_hue_circle() {
+    let base = Color {
+        r: 150,
+        g: 120,
+        b: 100,
+    };
+    let complementary = harmonies(base).complementary;
+    let difference = (to_oklch(complementary).h - to_oklch(base).h).rem_euclid(360.0);
+    // Tolerance is ±3° because of 8-bit RGB quantisation at low chroma, not
+    // because of gamut clipping: this base colour stays inside sRGB under
+    // every rotation the harmony maths performs.
+    assert!(
+        (difference - 180.0).abs() < 3.0,
+        "girou {difference}° em vez de 180°"
+    );
+}
+
+/// Rotating twice returns to the start. It catches a sign error or a missing
+/// wrap that a single rotation hides.
+#[test]
+fn the_complementary_of_the_complementary_is_the_original() {
+    let base = Color {
+        r: 150,
+        g: 120,
+        b: 100,
+    };
+    let there_and_back = harmonies(harmonies(base).complementary).complementary;
+    for (a, b) in [
+        (there_and_back.r, base.r),
+        (there_and_back.g, base.g),
+        (there_and_back.b, base.b),
+    ] {
+        assert!(
+            a.abs_diff(b) <= 2,
+            "voltou para {there_and_back:?} em vez de {base:?}"
+        );
+    }
+}
+
+#[test]
+fn the_analogous_pair_sits_thirty_degrees_to_each_side() {
+    let base = Color {
+        r: 150,
+        g: 120,
+        b: 100,
+    };
+    let base_hue = to_oklch(base).h;
+    let [left, right] = harmonies(base).analogous;
+    assert!(((to_oklch(left).h - base_hue).rem_euclid(360.0) - 330.0).abs() < 3.0);
+    assert!(((to_oklch(right).h - base_hue).rem_euclid(360.0) - 30.0).abs() < 3.0);
+}
+
+#[test]
+fn the_triad_pair_sits_a_third_of_a_turn_to_each_side() {
+    let base = Color {
+        r: 150,
+        g: 120,
+        b: 100,
+    };
+    let base_hue = to_oklch(base).h;
+    let [left, right] = harmonies(base).triad;
+    assert!(((to_oklch(left).h - base_hue).rem_euclid(360.0) - 240.0).abs() < 3.0);
+    assert!(((to_oklch(right).h - base_hue).rem_euclid(360.0) - 120.0).abs() < 3.0);
+}
+
+/// Rotating a saturated colour at constant chroma can leave the sRGB gamut;
+/// the per-channel clamp that pulls it back in then shifts the hue away from
+/// the exact 180° the harmony maths asked for. This pins that drift instead
+/// of hiding it behind a widened tolerance on the well-behaved base above.
+#[test]
+fn the_complementary_of_a_saturated_colour_drifts_past_the_exact_half_turn() {
+    let base = Color {
+        r: 200,
+        g: 60,
+        b: 60,
+    };
+    let complementary = harmonies(base).complementary;
+    let difference = (to_oklch(complementary).h - to_oklch(base).h).rem_euclid(360.0);
+    assert!(
+        difference > 180.0 && difference < 195.0,
+        "esperava um desvio do recorte de gama entre 180° e 195°, mas girou {difference}°"
+    );
+}
+
+/// Grey has no hue, so every rotation lands back on grey. It must not invent
+/// a colour out of a meaningless angle.
+#[test]
+fn harmonies_of_grey_stay_grey() {
+    let grey = Color {
+        r: 128,
+        g: 128,
+        b: 128,
+    };
+    let h = harmonies(grey);
+    for candidate in [h.complementary, h.analogous[0], h.triad[0]] {
+        assert!(
+            to_oklch(candidate).c < 1e-3,
+            "{candidate:?} ganhou croma do nada"
+        );
+    }
+}
