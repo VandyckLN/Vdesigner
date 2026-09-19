@@ -58,18 +58,22 @@ existe no Windows, em vez de embutir um navegador inteiro.
 
 ## Instalação
 
-Baixe o instalador `.msi` mais recente em Releases.
+Baixe em Releases. São dois caminhos, e os dois servem.
+
+**Instalador** — `Vdesigner_<versão>_x64-setup.exe`. Instala para o seu usuário,
+em `%LOCALAPPDATA%\Vdesigner`, então **não pede senha de administrador**. Cria
+o atalho no Menu Iniciar e aparece em Configurações → Aplicativos para
+desinstalar. Se o WebView2 não estiver na máquina, o instalador o baixa.
+
+**Portátil** — `vdesigner-portable-windows-x64.zip`. Extraia e execute; não
+escreve nada fora da própria pasta, então roda de um pen drive. Depende do
+Microsoft Edge WebView2 Runtime já presente no sistema, o que vale para o
+Windows 11 e para a maioria das instalações atualizadas do Windows 10.
 
 O Windows SmartScreen exibe um aviso na primeira execução, porque o aplicativo
 ainda não tem assinatura de código. Clique em "Mais informações" e depois em
-"Executar assim mesmo". O checksum SHA-256 de cada release é publicado junto do
-arquivo, e permite conferir que o download não foi alterado.
-
-Quem não pode instalar nada na máquina pode usar o pacote `.zip`, que roda
-direto da pasta — inclusive de um pen drive. Ele conta com o Microsoft Edge
-WebView2 Runtime já presente no sistema, o que vale para o Windows 11 e para a
-maioria das instalações atualizadas do Windows 10; o instalador `.msi` é o
-caminho para as máquinas que não o tenham.
+"Executar assim mesmo". O checksum SHA-256 de cada arquivo é publicado no
+`checksums.txt` da release, e permite conferir que o download não foi alterado.
 
 ## Desenvolvimento
 
