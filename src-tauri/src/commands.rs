@@ -3,12 +3,20 @@ use crate::session::{Session, SourceImage};
 use base64::Engine;
 use serde::Serialize;
 use std::path::PathBuf;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use vdesigner_core::{
     decode, is_svg, rasterize_svg, run_job, run_preview, EncodeSpec, Job, OutputFormat,
 };
 
 const PREVIEW_MAX_SIDE: u32 = 2048;
+
+/// The size estimate re-encodes the job in the real output format, which AVIF
+/// makes expensive. A much smaller sample keeps that affordable on every
+/// control change; the result is extrapolated back up.
+const ESTIMATE_MAX_SIDE: u32 = 512;
+
+/// Event name the export progress is published under.
+pub const EXPORT_PROGRESS_EVENT: &str = "export-progress";
 
 #[derive(Serialize)]
 pub struct ImageInfo {
@@ -29,6 +37,19 @@ pub struct PreviewResult {
 pub struct ExportResult {
     pub path: String,
     pub bytes_written: u64,
+}
+
+#[derive(Serialize)]
+pub struct EstimateResult {
+    pub bytes: u64,
+}
+
+/// One stage of an export, as the engine reports it.
+#[derive(Serialize, Clone)]
+pub struct ExportProgress {
+    pub current: u32,
+    pub total: u32,
+    pub label: String,
 }
 
 /// Every command returns a plain string on failure, because the UI only ever
@@ -98,8 +119,47 @@ pub fn preview(job: Job, session: State<Session>) -> CommandResult<PreviewResult
     })
 }
 
+/// Estimates the exported file size without paying for a full-resolution
+/// encode. The job runs in its real output format over a small copy, and the
+/// byte count is scaled back up by the reduction — so the number is an
+/// approximation, and the UI presents it as one.
+#[tauri::command]
+pub fn estimate(job: Job, session: State<Session>) -> CommandResult<EstimateResult> {
+    let guard = session
+        .source
+        .lock()
+        .map_err(|_| "estado corrompido".to_string())?;
+    let source = guard.as_ref().ok_or("nenhuma imagem aberta")?;
+
+    let sample = run_preview(&source.bytes, &job, ESTIMATE_MAX_SIDE).map_err(|e| e.to_string())?;
+
+    Ok(EstimateResult {
+        bytes: extrapolate(
+            sample.bytes.len() as u64,
+            source.width,
+            source.height,
+            ESTIMATE_MAX_SIDE,
+        ),
+    })
+}
+
+/// Scales a sample's byte count back to full resolution. The sample came from
+/// a copy whose longest side was capped at `max_side`, so it holds the square
+/// of that reduction fewer pixels. Compressed size is not exactly linear in
+/// pixel count, which is the reason the caller labels the result an estimate.
+pub fn extrapolate(sample_bytes: u64, width: u32, height: u32, max_side: u32) -> u64 {
+    let longest = width.max(height);
+    if max_side == 0 || longest <= max_side {
+        return sample_bytes;
+    }
+
+    let ratio = longest as f64 / max_side as f64;
+    (sample_bytes as f64 * ratio * ratio).round() as u64
+}
+
 #[tauri::command]
 pub fn export(
+    app: AppHandle,
     job: Job,
     output_dir: String,
     file_stem: String,
@@ -121,7 +181,19 @@ pub fn export(
     )
     .map_err(|e| e.to_string())?;
 
-    let output = run_job(&source.bytes, &job, &mut |_| {}).map_err(|e| e.to_string())?;
+    // A failed emit must not fail the export: the file still gets written, and
+    // the UI simply stops hearing about the stages.
+    let output = run_job(&source.bytes, &job, &mut |p| {
+        let _ = app.emit(
+            EXPORT_PROGRESS_EVENT,
+            ExportProgress {
+                current: p.current,
+                total: p.total,
+                label: p.label.to_string(),
+            },
+        );
+    })
+    .map_err(|e| e.to_string())?;
     let bytes_written = write_bytes(&path, &output.bytes).map_err(|e| e.to_string())?;
 
     Ok(ExportResult {

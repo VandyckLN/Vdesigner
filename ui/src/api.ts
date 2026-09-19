@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export type OutputFormat = "WebP" | "Avif" | "Png" | "Jpeg" | "Tiff" | "Ico";
 export type FitMode = "Contain" | "Cover" | "Stretch";
@@ -92,9 +93,26 @@ export interface ExportResult {
   bytes_written: number;
 }
 
+/** Approximate size of the file the current settings would write. */
+export interface EstimateResult {
+  bytes: number;
+}
+
+/** One stage of a running export, as the engine reports it. */
+export interface ExportProgress {
+  current: number;
+  total: number;
+  label: string;
+}
+
+const EXPORT_PROGRESS_EVENT = "export-progress";
+
 export const api = {
   openImage: (path: string) => invoke<ImageInfo>("open_image", { path }),
   preview: (job: Job) => invoke<PreviewResult>("preview", { job }),
+  estimate: (job: Job) => invoke<EstimateResult>("estimate", { job }),
   export: (job: Job, outputDir: string, fileStem: string, overwrite: boolean) =>
     invoke<ExportResult>("export", { job, outputDir, fileStem, overwrite }),
+  onExportProgress: (handler: (progress: ExportProgress) => void): Promise<UnlistenFn> =>
+    listen<ExportProgress>(EXPORT_PROGRESS_EVENT, (event) => handler(event.payload)),
 };

@@ -10,6 +10,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::open_image,
             commands::preview,
+            commands::estimate,
             commands::export
         ])
         .run(tauri::generate_context!())

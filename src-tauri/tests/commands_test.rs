@@ -1,4 +1,5 @@
 use std::fs;
+use vdesigner::commands::extrapolate;
 use vdesigner::export::{resolve_output_path, ExportError};
 
 #[test]
@@ -47,4 +48,21 @@ fn rejects_a_directory_that_does_not_exist() {
 
     let err = resolve_output_path(&missing, "hero", "webp", false).unwrap_err();
     assert!(matches!(err, ExportError::InvalidDirectory(_)));
+}
+
+#[test]
+fn scales_the_sample_by_the_square_of_the_reduction() {
+    // 2048 is four times 512, so the full image holds sixteen times the pixels.
+    assert_eq!(extrapolate(1_000, 2048, 1024, 512), 16_000);
+}
+
+#[test]
+fn leaves_a_sample_alone_when_the_source_was_never_reduced() {
+    assert_eq!(extrapolate(1_000, 400, 300, 512), 1_000);
+}
+
+#[test]
+fn measures_the_reduction_against_the_longest_side() {
+    // The portrait's height drives the cap, not its width.
+    assert_eq!(extrapolate(1_000, 512, 1024, 512), 4_000);
 }
