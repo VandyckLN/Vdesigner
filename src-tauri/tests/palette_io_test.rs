@@ -109,3 +109,58 @@ fn a_corrupt_file_reports_a_readable_error_instead_of_an_empty_palette() {
         Err(PaletteIoError::Core(_))
     ));
 }
+
+/// Simula uma falha de escrita nos arquivos derivados (cores.css) criando uma
+/// pasta no lugar onde o arquivo deveria ir: `std::fs::write` falha porque o
+/// caminho já existe e é um diretório, não um arquivo. Isso é honesto no
+/// Windows (e em qualquer plataforma) porque não depende de truques de baixo
+/// nível para interromper uma escrita no meio — apenas garante que a escrita
+/// falhe de verdade antes de chegar ao JSON da paleta.
+#[test]
+fn uma_falha_ao_escrever_arquivo_derivado_preserva_a_paleta_antiga_intacta() {
+    let dir = tempdir().unwrap();
+    let written = palette_io::save(dir.path(), &sample(), None).unwrap();
+
+    // Substitui cores.css por uma pasta, forçando a escrita seguinte a falhar.
+    std::fs::remove_file(dir.path().join("cores.css")).unwrap();
+    std::fs::create_dir(dir.path().join("cores.css")).unwrap();
+
+    let mut edited = sample();
+    edited.nome = "outro".into();
+    let result = palette_io::save(dir.path(), &edited, Some(&written));
+    assert!(result.is_err(), "a escrita deveria falhar de propósito");
+
+    let on_disk = std::fs::read_to_string(dir.path().join("vdesigner-cores.json")).unwrap();
+    assert_eq!(
+        on_disk, written,
+        "o arquivo da paleta deve permanecer byte a byte igual ao anterior após a falha"
+    );
+    let loaded = palette_io::load(dir.path()).unwrap().unwrap();
+    assert_eq!(
+        loaded.palette,
+        sample(),
+        "a paleta antiga ainda deve ser válida e carregável após a falha"
+    );
+}
+
+/// Prova que a troca por arquivo temporário não introduz regressão: a
+/// gravação continua indo e voltando (round-trip) corretamente, e nenhum
+/// arquivo temporário sobra na pasta depois de um save bem-sucedido.
+#[test]
+fn um_save_bem_sucedido_nao_deixa_arquivo_temporario_para_tras() {
+    let dir = tempdir().unwrap();
+    let written = palette_io::save(dir.path(), &sample(), None).unwrap();
+
+    let loaded = palette_io::load(dir.path()).unwrap().unwrap();
+    assert_eq!(loaded.palette, sample());
+    assert_eq!(loaded.on_disk, written);
+
+    let entries: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+        .collect();
+    assert!(
+        entries.iter().all(|name| !name.ends_with(".tmp")),
+        "nenhum arquivo temporário deveria sobrar na pasta, encontrado: {entries:?}"
+    );
+}
