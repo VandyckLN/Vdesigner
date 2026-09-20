@@ -413,5 +413,10 @@ body {
    tomar a cor de acento como preenchimento. */
 .about-result { color: var(--ink); border-left: 1px solid var(--accent); padding-left: var(--step); margin: 0; font-size: 12px; }
 
+/* Mesmo tratamento que a faixa de atualização dá aos seus dois avisos, para
+   que instalar pela tela Sobre não pareça outro recurso. */
+.about-error { color: var(--ink); font-family: var(--mono); font-size: 0.82rem; }
+.about-progress { color: var(--dim); font-family: var(--mono); font-size: 0.82rem; }
+
 .about-toggle { display: flex; align-items: center; gap: 6px; color: var(--ink); font-size: 12px; }
 .about-note { color: var(--dim); font-size: 11px; margin: 0; max-width: 46ch; }

@@ -6,6 +6,7 @@ vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: vi.fn() }));
 
 import {
   procurarAtualizacao,
+  procurarAtualizacaoManual,
   checagemAutomaticaLigada,
   definirChecagemAutomatica,
   CHAVE_CHECAGEM,
@@ -35,6 +36,53 @@ describe("procurarAtualizacao", () => {
   it("devolve nulo em falha de rede, sem lançar", async () => {
     check.mockRejectedValue(new Error("network error"));
     await expect(procurarAtualizacao()).resolves.toBeNull();
+  });
+
+  // Sem prazo, uma conexão engolida deixa a promessa pendente para sempre:
+  // a faixa nunca aparece e o botão da tela Sobre fica desabilitado pelo
+  // resto da vida da janela.
+  it("passa um tempo limite de 10 segundos para o plugin", async () => {
+    check.mockResolvedValue({ available: false });
+    await procurarAtualizacao();
+    expect(check).toHaveBeenCalledWith({ timeout: 10_000 });
+  });
+
+  it("trata o estouro do tempo limite como qualquer outra falha", async () => {
+    check.mockRejectedValue(new Error("Request timed out"));
+    await expect(procurarAtualizacao()).resolves.toBeNull();
+  });
+});
+
+describe("procurarAtualizacaoManual", () => {
+  beforeEach(() => {
+    check.mockReset();
+    localStorage.clear();
+  });
+
+  it("devolve a atualização encontrada", async () => {
+    check.mockResolvedValue({ available: true, version: "2.2.0", body: "notas" });
+    const resposta = await procurarAtualizacaoManual();
+    expect(resposta.estado).toBe("encontrada");
+    expect(resposta).toMatchObject({ atualizacao: { versao: "2.2.0" } });
+  });
+
+  it("distingue estar atualizado de não ter conseguido checar", async () => {
+    check.mockResolvedValue({ available: false });
+    expect(await procurarAtualizacaoManual()).toEqual({ estado: "atualizado" });
+
+    check.mockRejectedValue(new Error("network error"));
+    expect(await procurarAtualizacaoManual()).toEqual({ estado: "falhou" });
+  });
+
+  it("relata falha quando a checagem estoura o tempo limite", async () => {
+    check.mockRejectedValue(new Error("Request timed out"));
+    expect(await procurarAtualizacaoManual()).toEqual({ estado: "falhou" });
+  });
+
+  it("também passa o tempo limite na busca manual", async () => {
+    check.mockResolvedValue({ available: false });
+    await procurarAtualizacaoManual();
+    expect(check).toHaveBeenCalledWith({ timeout: 10_000 });
   });
 });
 
