@@ -23,4 +23,50 @@ describe("Sidebar", () => {
     await userEvent.click(screen.getByRole("tab", { name: /imagem/i }));
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("liga cada aba ao seu painel com aria-controls", () => {
+    render(<Sidebar current="imagem" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: /imagem/i })).toHaveAttribute(
+      "aria-controls",
+      "panel-imagem",
+    );
+    expect(screen.getByRole("tab", { name: /cores/i })).toHaveAttribute(
+      "aria-controls",
+      "panel-cores",
+    );
+  });
+
+  it("só deixa a aba selecionada na ordem de tabulação (roving tabindex)", () => {
+    render(<Sidebar current="imagem" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: /imagem/i })).toHaveAttribute("tabIndex", "0");
+    expect(screen.getByRole("tab", { name: /cores/i })).toHaveAttribute("tabIndex", "-1");
+  });
+
+  it("move a seleção para a direita com ArrowRight e o foco acompanha", async () => {
+    const onChange = vi.fn();
+    render(<Sidebar current="imagem" onChange={onChange} />);
+    screen.getByRole("tab", { name: /imagem/i }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(onChange).toHaveBeenCalledWith("cores");
+  });
+
+  it("volta ao início com ArrowLeft a partir da primeira aba (wrap)", async () => {
+    const onChange = vi.fn();
+    render(<Sidebar current="imagem" onChange={onChange} />);
+    screen.getByRole("tab", { name: /imagem/i }).focus();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(onChange).toHaveBeenCalledWith("cores");
+  });
+
+  it("Home e End selecionam a primeira e a última aba", async () => {
+    const onChange = vi.fn();
+    render(<Sidebar current="cores" onChange={onChange} />);
+    screen.getByRole("tab", { name: /cores/i }).focus();
+    await userEvent.keyboard("{Home}");
+    expect(onChange).toHaveBeenCalledWith("imagem");
+
+    onChange.mockClear();
+    await userEvent.keyboard("{End}");
+    expect(onChange).toHaveBeenCalledWith("cores");
+  });
 });

@@ -332,3 +332,7 @@ body {
   mix-blend-mode: difference;
 }
 .ramp li + li, .harmony li + li { border-left: 1px solid var(--rule); }
+
+/* Names the relationship each harmony swatch carries (complementary,
+   analogous, triad), so it isn't communicated by color position alone. */
+.harmony li span { font-family: var(--sans); font-size: 9px; letter-spacing: 0.03em; }

@@ -64,10 +64,20 @@ export function Colors({
   const pickFolder = async () => {
     const chosen = await onPickDirectory();
     if (!chosen) return;
-    setDir(chosen);
-    const snapshot = await api.loadPalette(chosen);
-    setPalette(snapshot?.palette ?? EMPTY_PALETTE);
-    setOnDisk(snapshot?.on_disk ?? null);
+    try {
+      const snapshot = await api.loadPalette(chosen);
+      // Only commit to the new directory once its palette has actually
+      // loaded. Setting `dir` earlier (or on failure) would let a "Gravar"
+      // right after a failed pick write the previous folder's palette into
+      // this one, or leave a stale palette/onDisk pair under a directory
+      // whose contents the component never actually read.
+      setDir(chosen);
+      setPalette(snapshot?.palette ?? EMPTY_PALETTE);
+      setOnDisk(snapshot?.on_disk ?? null);
+      setError(null);
+    } catch (e) {
+      setError(`Não foi possível abrir a paleta da pasta escolhida: ${String(e)}`);
+    }
   };
 
   const copy = async () => {
@@ -75,6 +85,27 @@ export function Colors({
     await writeText(text);
   };
 
+  /** Shared persistence so "Adicionar" and "Gravar" cannot drift apart: both
+   *  end up calling the exact same save + snapshot-update path. */
+  const persist = async (next: Palette): Promise<boolean> => {
+    if (!dir) return false;
+    try {
+      const written = await api.savePalette(dir, next, onDisk);
+      setPalette(next);
+      setOnDisk(written);
+      setError(null);
+      return true;
+    } catch (e) {
+      setError(String(e));
+      return false;
+    }
+  };
+
+  // CONTROLLER RULING: the plan had "Adicionar" and "Gravar" both call the
+  // same handler, which forced name validation onto a plain re-save of an
+  // already-loaded palette. Split deliberately: "Adicionar" appends a new
+  // swatch (so it must validate the name), "Gravar" only persists whatever
+  // is already in state (so it must not).
   const add = async () => {
     if (!VALID_NAME.test(name)) {
       setError("Use apenas letras minúsculas sem acento, números e hífen.");
@@ -86,15 +117,12 @@ export function Colors({
       ...palette,
       cores: [...palette.cores, { nome: name, hex, rampa: false }],
     };
-    try {
-      const written = await api.savePalette(dir, next, onDisk);
-      setPalette(next);
-      setOnDisk(written);
-      setName("");
-      setError(null);
-    } catch (e) {
-      setError(String(e));
-    }
+    const ok = await persist(next);
+    if (ok) setName("");
+  };
+
+  const save = async () => {
+    await persist(palette);
   };
 
   return (
@@ -129,11 +157,11 @@ export function Colors({
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="acento" />
         </label>
 
-        <button type="button" onClick={add} disabled={!dir || !variations}>
+        <button type="button" onClick={add} disabled={!dir || !name.trim() || !hex.trim()}>
           Adicionar
         </button>
 
-        <button type="button" disabled={!dir} onClick={add}>
+        <button type="button" disabled={!dir} onClick={save}>
           Gravar
         </button>
       </div>
@@ -156,9 +184,17 @@ export function Colors({
           </ol>
 
           <ul className="harmony" aria-label="Harmonias">
-            {[variations.complementary, ...variations.analogous, ...variations.triad].map((c) => (
-              <li key={c} style={{ background: c }}>
-                <code>{c}</code>
+            {[
+              { label: "Complementar", value: variations.complementary },
+              ...variations.analogous.map((value, i) => ({
+                label: `Análoga ${i + 1}`,
+                value,
+              })),
+              ...variations.triad.map((value, i) => ({ label: `Tríade ${i + 1}`, value })),
+            ].map(({ label, value }) => (
+              <li key={`${label}-${value}`} style={{ background: value }}>
+                <span>{label}</span>
+                <code>{value}</code>
               </li>
             ))}
           </ul>
