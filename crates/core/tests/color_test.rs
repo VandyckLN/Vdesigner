@@ -54,29 +54,138 @@ fn pure_grey_reports_a_finite_hue() {
     assert!(lch.c < 1e-3);
 }
 
-/// A high chroma at an extreme lightness has no sRGB answer: the linear RGB
-/// this hue and chroma imply pushes red below 0 and green above 1. Clamping
-/// before rounding keeps every channel a real sRGB byte instead of letting a
-/// negative value wrap around a `u8` cast into a bogus colour, and the hue
-/// the input asked for (150 degrees, green) still dominates the result.
+/// A high chroma at an extreme lightness has no sRGB answer. The mapping
+/// reduces chroma until it fits rather than clamping each channel, so the
+/// lightness and hue the caller asked for survive and only the saturation
+/// gives way.
+///
+/// Updated with the switch from per-channel clamping to chroma reduction.
+/// The old expectation was `r == 0, g == 255` — the signature of the clamp
+/// pinning two channels at opposite ends of the range, which is exactly the
+/// behaviour that bent the hue. The result is now a pale green
+/// (`#F5FFF6`): still green, still at lightness 0.99, just far less
+/// saturated than the impossible 0.4 chroma requested.
 #[test]
-fn colour_outside_the_srgb_gamut_is_clipped_into_range() {
+fn a_colour_outside_the_srgb_gamut_keeps_its_hue_and_loses_chroma() {
     let impossible = Oklch {
         l: 0.99,
         c: 0.4,
         h: 150.0,
     };
-    let clipped = from_oklch(impossible);
+    let mapped = from_oklch(impossible);
+    let got = to_oklch(mapped);
 
-    // Clamping the out-of-range channels pins red at 0 and green at the
-    // gamut ceiling; a wraparound bug would instead surface as a channel
-    // far from either boundary.
-    assert_eq!(clipped.r, 0, "vermelho ficou {}", clipped.r);
-    assert_eq!(clipped.g, 255, "verde ficou {}", clipped.g);
     assert!(
-        clipped.g > clipped.r && clipped.g > clipped.b,
-        "verde deveria dominar para o matiz 150: {clipped:?}"
+        (got.l - impossible.l).abs() < 5e-3,
+        "L virou {} em vez de {}",
+        got.l,
+        impossible.l
     );
+    // 2° of slack: at this lightness the gamut leaves almost no chroma, and
+    // the hue of a near-grey byte triple is coarse simply because 8 bits
+    // cannot express a finer angle.
+    assert!(
+        hue_error(got.h, impossible.h).abs() < 2.0,
+        "matiz virou {} em vez de {}",
+        got.h,
+        impossible.h
+    );
+    assert!(
+        got.c < impossible.c,
+        "o croma deveria ter sido reduzido, ficou {}",
+        got.c
+    );
+    assert!(
+        mapped.g > mapped.r && mapped.g > mapped.b,
+        "verde deveria dominar para o matiz 150: {mapped:?}"
+    );
+}
+
+/// Signed hue difference, never longer than half a turn, so an angle just
+/// under 360° and one just over 0° read as neighbours rather than opposites.
+fn hue_error(actual: f64, expected: f64) -> f64 {
+    let raw = (actual - expected).rem_euclid(360.0);
+    if raw > 180.0 {
+        raw - 360.0
+    } else {
+        raw
+    }
+}
+
+/// The four brand colours that exposed the per-channel clamp. All sit above
+/// roughly 0.23 chroma, which is where clamping used to start visibly bending
+/// the hue.
+const SATURATED_BRANDS: [&str; 4] = ["#0057FF", "#FF6B00", "#FF00AA", "#E10600"];
+
+/// A tonal ramp holds hue and chroma fixed and moves only lightness, so every
+/// rung must read as the same colour. Under per-channel clamping they did not:
+/// step 50 of Klein blue came out cyan, 50.9° away, and steps 700-900 of the
+/// orange all collapsed onto one clipped red.
+///
+/// The 4° tolerance is set from what the fix actually delivers — the worst
+/// measured drift across these four colours is 3.59°, on step 50 of `#E10600`.
+/// That step is a near-white tint whose chroma the gamut has squeezed to
+/// almost nothing, and the hue of a near-grey byte triple is coarse for the
+/// same reason white has no hue at all. Every other step of every colour here
+/// stays under 2.1°.
+#[test]
+fn every_ramp_step_of_a_saturated_colour_keeps_the_base_hue() {
+    for hex in SATURATED_BRANDS {
+        let base = parse_hex(hex).unwrap();
+        let base_hue = to_oklch(base).h;
+        for (index, step) in ramp(base).iter().enumerate() {
+            let error = hue_error(to_oklch(*step).h, base_hue);
+            assert!(
+                error.abs() < 4.0,
+                "{hex}: o passo {} ({}) desviou {error}° do matiz base {base_hue}°",
+                RAMP_STEPS[index],
+                format(*step, ColorFormat::Hex)
+            );
+        }
+    }
+}
+
+/// A ramp is useless if two different brand colours can land on the same
+/// bytes: under the old clamp `#6D0000` was step 800 of both `#FF6B00` and
+/// `#E10600`, because both had clipped to pure red.
+#[test]
+fn two_different_brands_do_not_share_a_ramp_step() {
+    let orange = ramp(parse_hex("#FF6B00").unwrap());
+    let red = ramp(parse_hex("#E10600").unwrap());
+    for (index, (o, r)) in orange.iter().zip(red.iter()).enumerate() {
+        assert_ne!(o, r, "o passo {} coincidiu em {:?}", RAMP_STEPS[index], o);
+    }
+}
+
+/// The harmony angles are the whole product: a complementary that rotates 145°
+/// instead of 180° is not a complementary, and an analogous pair that lands at
+/// -7.8° and +30.1° reads as two near-duplicates of the base. Under the old
+/// clamp `#0057FF` produced exactly that.
+///
+/// The 1° tolerance is set from measurement: the worst error across these four
+/// bases and all five companions is 0.33°, which is 8-bit rounding rather than
+/// gamut mapping.
+#[test]
+fn harmony_rotations_of_a_saturated_colour_land_on_their_nominal_angles() {
+    for hex in SATURATED_BRANDS {
+        let base = parse_hex(hex).unwrap();
+        let base_hue = to_oklch(base).h;
+        let set = harmonies(base);
+        for (name, companion, nominal) in [
+            ("complementar", set.complementary, 180.0),
+            ("análoga -30", set.analogous[0], -30.0),
+            ("análoga +30", set.analogous[1], 30.0),
+            ("tríade -120", set.triad[0], -120.0),
+            ("tríade +120", set.triad[1], 120.0),
+        ] {
+            let error = hue_error(to_oklch(companion).h, base_hue + nominal);
+            assert!(
+                error.abs() < 1.0,
+                "{hex}: a {name} errou por {error}° (base {base_hue}°, resultado {})",
+                format(companion, ColorFormat::Hex)
+            );
+        }
+    }
 }
 
 use vdesigner_core::{format, parse_hex, ColorFormat, CoreError};
@@ -419,12 +528,16 @@ fn the_triad_pair_sits_a_third_of_a_turn_to_each_side() {
     assert!(((to_oklch(right).h - base_hue).rem_euclid(360.0) - 120.0).abs() < 3.0);
 }
 
-/// Rotating a saturated colour at constant chroma can leave the sRGB gamut;
-/// the per-channel clamp that pulls it back in then shifts the hue away from
-/// the exact 180° the harmony maths asked for. This pins that drift instead
-/// of hiding it behind a widened tolerance on the well-behaved base above.
+/// Rotating a saturated colour at constant chroma can leave the sRGB gamut.
+/// Pulling it back in by reducing chroma keeps the angle exact, so the
+/// complementary of a saturated base is just as true as that of a muted one.
+///
+/// Replaces `the_complementary_of_a_saturated_colour_drifts_past_the_exact_half_turn`,
+/// which asserted the rotation landed somewhere between 180° and 195° — it
+/// pinned the per-channel clamp's hue drift as though it were the intended
+/// behaviour. The rotation now measures 180.1°.
 #[test]
-fn the_complementary_of_a_saturated_colour_drifts_past_the_exact_half_turn() {
+fn the_complementary_of_a_saturated_colour_still_lands_on_the_exact_half_turn() {
     let base = Color {
         r: 200,
         g: 60,
@@ -433,8 +546,8 @@ fn the_complementary_of_a_saturated_colour_drifts_past_the_exact_half_turn() {
     let complementary = harmonies(base).complementary;
     let difference = (to_oklch(complementary).h - to_oklch(base).h).rem_euclid(360.0);
     assert!(
-        difference > 180.0 && difference < 195.0,
-        "esperava um desvio do recorte de gama entre 180° e 195°, mas girou {difference}°"
+        (difference - 180.0).abs() < 1.0,
+        "girou {difference}° em vez de 180°"
     );
 }
 

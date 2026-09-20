@@ -71,7 +71,10 @@ pub fn to_oklch(color: Color) -> Oklch {
     }
 }
 
-pub fn from_oklch(lch: Oklch) -> Color {
+/// Linear-light sRGB for an OKLCH triple, before the transfer function and
+/// before any clamping. Channels outside [0, 1] here mean the colour is
+/// outside the sRGB gamut.
+fn linear_rgb_from_oklch(lch: Oklch) -> (f64, f64, f64) {
     let hue = lch.h.to_radians();
     let lab_a = lch.c * hue.cos();
     let lab_b = lch.c * hue.sin();
@@ -84,10 +87,64 @@ pub fn from_oklch(lch: Oklch) -> Color {
     let m = m_ * m_ * m_;
     let s = s_ * s_ * s_;
 
-    let r = 4.076_741_662_1 * l - 3.307_711_591_3 * m + 0.230_969_929_2 * s;
-    let g = -1.268_438_004_6 * l + 2.609_757_401_1 * m - 0.341_319_396_5 * s;
-    let b = -0.004_196_086_3 * l - 0.703_418_614_7 * m + 1.707_614_701_0 * s;
+    (
+        4.076_741_662_1 * l - 3.307_711_591_3 * m + 0.230_969_929_2 * s,
+        -1.268_438_004_6 * l + 2.609_757_401_1 * m - 0.341_319_396_5 * s,
+        -0.004_196_086_3 * l - 0.703_418_614_7 * m + 1.707_614_701_0 * s,
+    )
+}
 
+/// Slack on the gamut test. Round-tripping a real sRGB byte lands a channel on
+/// 0 or 1 give or take floating-point dust; without the slack those colours
+/// would read as out of gamut and get their chroma shaved for nothing.
+const GAMUT_EPSILON: f64 = 1e-9;
+
+fn in_srgb_gamut(lch: Oklch) -> bool {
+    let (r, g, b) = linear_rgb_from_oklch(lch);
+    [r, g, b]
+        .iter()
+        .all(|c| *c >= -GAMUT_EPSILON && *c <= 1.0 + GAMUT_EPSILON)
+}
+
+/// Iterations of the bisection. Each halves the chroma interval, so 16 of them
+/// pin the answer to within about 4e-6 of a chroma unit — far finer than the
+/// 8-bit channels can express.
+const GAMUT_SEARCH_STEPS: u32 = 16;
+
+/// Converts OKLCH to sRGB, mapping out-of-gamut colours back in by **reducing
+/// chroma** while holding lightness and hue exactly.
+///
+/// The obvious alternative — compute the channels and clamp each one into
+/// [0, 1] independently — is wrong for a colour tool. Clamping red without
+/// touching green and blue changes the *ratio* between the channels, and that
+/// ratio is the hue. In practice a saturated blue (#0057FF) lightened for the
+/// top of a tonal ramp came out cyan, nearly 51 degrees off, and an orange
+/// darkened for the bottom of its ramp clipped to pure red with green and blue
+/// flat at zero. The user picked the hue; it is the one property the tool must
+/// not silently rewrite. Chroma is negotiable — a slightly duller blue still
+/// reads as that blue — so when the requested (L, C, H) has no sRGB answer we
+/// bisect the chroma down to the largest value that does, leaving L and H
+/// untouched. A colour already inside the gamut is returned unchanged.
+pub fn from_oklch(lch: Oklch) -> Color {
+    let mapped = if in_srgb_gamut(lch) {
+        lch
+    } else {
+        // Chroma zero is achromatic: in gamut for any lightness in range, so
+        // the low end of the bracket is always safe.
+        let mut low = 0.0;
+        let mut high = lch.c;
+        for _ in 0..GAMUT_SEARCH_STEPS {
+            let mid = f64::midpoint(low, high);
+            if in_srgb_gamut(Oklch { c: mid, ..lch }) {
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        Oklch { c: low, ..lch }
+    };
+
+    let (r, g, b) = linear_rgb_from_oklch(mapped);
     Color {
         r: to_byte(linear_to_srgb(r)),
         g: to_byte(linear_to_srgb(g)),
@@ -95,9 +152,10 @@ pub fn from_oklch(lch: Oklch) -> Color {
     }
 }
 
-/// Clamps before rounding. A colour outside the sRGB gamut produces a channel
-/// below 0 or above 1, and casting that straight to u8 wraps it into a wildly
-/// wrong colour instead of the nearest real one.
+/// Clamps before rounding. After the chroma search a channel should only ever
+/// sit a hair outside [0, 1] from floating-point error, but an extreme
+/// lightness has no in-gamut answer at any chroma, and casting a negative
+/// straight to u8 wraps it into a wildly wrong colour.
 fn to_byte(channel: f64) -> u8 {
     (channel.clamp(0.0, 1.0) * 255.0).round() as u8
 }
@@ -224,11 +282,11 @@ const L_LIGHTEST: f64 = 0.97;
 const L_DARKEST: f64 = 0.15;
 
 /// Generates a perceptually uniform ten-step tonal scale from a base colour,
-/// with the source colour returned byte-for-byte unchanged at step 500. Chroma
-/// and hue remain constant across the scale; high chroma near white has no sRGB
-/// answer, so the extreme steps come out less saturated than the arithmetic
-/// requests — a deliberate simplification. Reducing chroma toward the ends is a
-/// later refinement.
+/// with the source colour returned byte-for-byte unchanged at step 500. Hue
+/// stays exact across the whole scale; high chroma near white or near black has
+/// no sRGB answer, so `from_oklch` shaves the chroma of the extreme steps down
+/// to whatever the gamut allows at that lightness. The ends therefore come out
+/// less saturated than the arithmetic requests, but never a different colour.
 pub fn ramp(base: Color) -> [Color; 10] {
     let anchor = to_oklch(base);
     let lightest = L_LIGHTEST.max(anchor.l);
@@ -319,8 +377,8 @@ pub struct Harmony {
 /// at 180°; analogous pairs flank the base by 30° on each side; triadic colours
 /// sit at thirds of a turn (±120°). Lightness and chroma are preserved across
 /// all companions so they read as members of the same family rather than as
-/// unrelated colours — high saturation near the gamut edge may shift hue
-/// slightly during gamut clipping.
+/// unrelated colours. A rotation that leaves the sRGB gamut keeps its hue and
+/// loses chroma instead, so the angles stay true even for saturated bases.
 pub fn harmonies(base: Color) -> Harmony {
     let rotate = |degrees: f64| {
         let lch = to_oklch(base);
