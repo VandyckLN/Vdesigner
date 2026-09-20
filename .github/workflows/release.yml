@@ -12,6 +12,20 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Falha aqui, antes de qualquer setup de toolchain ou build, em vez de
+      # terminar silenciosamente com um instalador sem .sig que o script de
+      # liberação vai recusar para sempre.
+      - name: Verificar o segredo de assinatura
+        shell: pwsh
+        run: |
+          if (-not "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}") {
+            throw "TAURI_SIGNING_PRIVATE_KEY não está configurado; a release sairia sem assinatura."
+          }
+          if (-not "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}") {
+            throw "TAURI_SIGNING_PRIVATE_KEY_PASSWORD não está configurado; a release sairia sem assinatura."
+          }
+
       - uses: dtolnay/rust-toolchain@1.98
       - uses: actions/setup-node@v4
         with:
@@ -25,16 +39,6 @@ jobs:
           echo "C:\Program Files\NASM" >> $env:GITHUB_PATH
       - run: npm --prefix ui ci
       - run: cargo install tauri-cli --version "^2" --locked
-
-      # Falha aqui, antes dos ~15 minutos de build, em vez de terminar
-      # silenciosamente com um instalador sem .sig que o script de liberação
-      # vai recusar para sempre.
-      - name: Verificar o segredo de assinatura
-        shell: pwsh
-        run: |
-          if (-not "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}") {
-            throw "TAURI_SIGNING_PRIVATE_KEY não está configurado; a release sairia sem assinatura."
-          }
 
       - name: cargo tauri build
         env:
