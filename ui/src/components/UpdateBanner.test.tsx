@@ -55,6 +55,22 @@ describe("UpdateBanner", () => {
     await waitFor(() => expect(instalar).toHaveBeenCalledTimes(1));
   });
 
+  it("ignora o segundo clique em Atualizar enquanto a instalação está em curso", async () => {
+    procurarAtualizacao.mockResolvedValue(disponivel);
+    let resolver: (() => void) | undefined;
+    instalar.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolver = resolve;
+      }),
+    );
+    render(<UpdateBanner />);
+    const botao = await screen.findByRole("button", { name: "Atualizar" });
+    await userEvent.click(botao);
+    await userEvent.click(botao);
+    expect(instalar).toHaveBeenCalledTimes(1);
+    resolver?.();
+  });
+
   it("mostra o erro e mantém o botão quando a instalação falha", async () => {
     procurarAtualizacao.mockResolvedValue(disponivel);
     instalar.mockRejectedValue(new Error("assinatura inválida"));
