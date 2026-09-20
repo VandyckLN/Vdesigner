@@ -50,12 +50,12 @@ describe("Sidebar", () => {
     expect(onChange).toHaveBeenCalledWith("cores");
   });
 
-  it("volta ao início com ArrowLeft a partir da primeira aba (wrap)", async () => {
+  it("volta ao final com ArrowLeft a partir da primeira aba (wrap)", async () => {
     const onChange = vi.fn();
     render(<Sidebar current="imagem" onChange={onChange} />);
     screen.getByRole("tab", { name: /imagem/i }).focus();
     await userEvent.keyboard("{ArrowLeft}");
-    expect(onChange).toHaveBeenCalledWith("cores");
+    expect(onChange).toHaveBeenCalledWith("sobre");
   });
 
   it("Home e End selecionam a primeira e a última aba", async () => {
@@ -67,6 +67,12 @@ describe("Sidebar", () => {
 
     onChange.mockClear();
     await userEvent.keyboard("{End}");
-    expect(onChange).toHaveBeenCalledWith("cores");
+    expect(onChange).toHaveBeenCalledWith("sobre");
+  });
+
+  it("inclui Sobre como terceira aba", () => {
+    render(<Sidebar current="imagem" onChange={() => {}} />);
+    expect(screen.getAllByRole("tab")).toHaveLength(3);
+    expect(screen.getByRole("tab", { name: "Sobre" })).toBeInTheDocument();
   });
 });

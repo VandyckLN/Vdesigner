@@ -402,3 +402,16 @@ body {
 /* Empurra os dois botões para a direita sem depender de quais spans
    apareceram antes deles, que variam com o estado. */
 .update-banner > button:first-of-type { margin-left: auto; }
+
+/* A tela Sobre segue a mesma coluna de bloco único que .colors: sem cartão,
+   sem sombra, apenas o respiro do grid vertical padrão. */
+.about { padding: var(--gutter); display: flex; flex-direction: column; gap: var(--step); align-items: flex-start; }
+.about-version { color: var(--ink); font-family: var(--mono); font-size: 12px; margin: 0; }
+
+/* O resultado da busca manual é informação, não erro: mesmo tratamento de
+   fio à esquerda que .colors-error usa para separar-se do texto comum, sem
+   tomar a cor de acento como preenchimento. */
+.about-result { color: var(--ink); border-left: 1px solid var(--accent); padding-left: var(--step); margin: 0; font-size: 12px; }
+
+.about-toggle { display: flex; align-items: center; gap: 6px; color: var(--ink); font-size: 12px; }
+.about-note { color: var(--dim); font-size: 11px; margin: 0; max-width: 46ch; }
