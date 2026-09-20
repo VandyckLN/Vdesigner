@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { montarManifesto, selecionarInstalador } from "./liberar.mjs";
+import { montarManifesto, selecionarInstalador, principal } from "./liberar.mjs";
 
 const anexos = [{ name: "Vdesigner_2.1.0_x64-setup.exe" }, { name: "Vdesigner_2.1.0_x64-setup.exe.sig" }];
 const base = { tag: "v2.1.0", anexos, assinatura: "ASSINATURA", notas: "notas", agora: "2026-09-20T15:00:00Z" };
@@ -129,6 +129,78 @@ test("selecionarInstalador é a única autoridade e nunca diverge por ordem do a
   // The URL montarManifesto builds must name the same installer
   // selecionarInstalador returned — not the first asset in the array.
   assert.match(m.platforms["windows-x86_64"].url, /Vdesigner_2\.1\.0_x64-setup\.exe$/);
+});
+
+// Fix round 3: the test above only calls selecionarInstalador and
+// montarManifesto directly — but montarManifesto calls selecionarInstalador
+// internally, so that assertion is tautological and never exercises
+// principal(), which is where round 1's actual bug lived (a separate,
+// unfiltered lookup deciding which .sig to download). This test drives the
+// whole promotion path through principal() with fakes for gh and the
+// filesystem — no process spawned, no disk touched — and checks that the
+// .sig requested for download is the .sig of the installer that ends up
+// named in the manifest's URL. A reintroduced open-coded lookup in
+// principal() (picking the first "_x64-setup.exe" asset by array order)
+// would make this fail: it would request the 9.9.9 .sig while the manifest
+// still names the 2.1.0 installer.
+test("principal() baixa o .sig do mesmo instalador que acaba no manifesto (ponta a ponta, com fakes)", () => {
+  // Deliberately mismatched order: a non-matching installer first, the
+  // correct one second — this is exactly the shape that fooled the old
+  // unfiltered `.find()` in principal().
+  const anexosDaRelease = [
+    { name: "Vdesigner_9.9.9_x64-setup.exe" },
+    { name: "Vdesigner_9.9.9_x64-setup.exe.sig" },
+    { name: "Vdesigner_2.1.0_x64-setup.exe" },
+    { name: "Vdesigner_2.1.0_x64-setup.exe.sig" },
+  ];
+
+  const chamadasGh = [];
+  let sigSolicitado = null;
+
+  function executarGhFalso(args) {
+    chamadasGh.push(args);
+    if (args[1] === "view") {
+      return JSON.stringify({ assets: anexosDaRelease, body: "notas de teste", isDraft: false, isPrerelease: false });
+    }
+    if (args[1] === "download") {
+      sigSolicitado = args[args.indexOf("-p") + 1];
+      return "";
+    }
+    throw new Error(`gh falso não sabe responder a: ${args.join(" ")}`);
+  }
+
+  const escritos = [];
+  function lerFalso(caminho) {
+    if (caminho === "updates/stable.json") {
+      return JSON.stringify({ version: "0.0.0", notes: "", pub_date: "2026-01-01T00:00:00Z", platforms: {} });
+    }
+    // Any other read is the downloaded .sig's contents — its own path is not
+    // meaningful here since criarPastaTemp is also faked below.
+    return "CONTEUDO-DA-ASSINATURA";
+  }
+  function escreverFalso(caminho, conteudo) {
+    escritos.push({ caminho, conteudo });
+  }
+
+  principal({
+    tag: "v2.1.0",
+    executarGh: executarGhFalso,
+    ler: lerFalso,
+    escrever: escreverFalso,
+    criarPastaTemp: () => "PASTA-FALSA",
+    agora: () => "2026-09-20T15:00:00Z",
+    log: () => {},
+  });
+
+  assert.ok(sigSolicitado, "principal() deveria ter pedido um .sig ao gh falso");
+  assert.equal(escritos.length, 1);
+  const manifesto = JSON.parse(escritos[0].conteudo);
+  const instaladorNaUrl = manifesto.platforms["windows-x86_64"].url.split("/").pop();
+
+  // The core assertion: the .sig requested for download must belong to the
+  // exact same installer the manifest's URL ends up naming.
+  assert.equal(sigSolicitado, `${instaladorNaUrl}.sig`);
+  assert.equal(instaladorNaUrl, "Vdesigner_2.1.0_x64-setup.exe");
 });
 
 // Fix round 1, finding 3: a draft's assets aren't served from the public

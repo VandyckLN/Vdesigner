@@ -84,39 +84,54 @@ function gh(args) {
   return execFileSync("gh", args, { encoding: "utf8" });
 }
 
-function principal() {
-  const tag = process.argv[2];
+// principal()'s side effects (the gh process, disk reads/writes, the temp
+// directory) are all injectable, with real implementations as defaults, so a
+// test can drive the whole promotion path — including the .sig download —
+// against fakes. This is what makes it possible to pin, end to end, that the
+// .sig principal() fetches always belongs to the installer selecionarInstalador
+// actually chose; a purely structural argument (both call sites use the same
+// function) was not enough after round 1's regression slipped past 14 passing
+// tests that never exercised principal() itself.
+export function principal({
+  tag = process.argv[2],
+  executarGh = gh,
+  ler = readFileSync,
+  escrever = writeFileSync,
+  criarPastaTemp = () => mkdtempSync(join(tmpdir(), "liberar-")),
+  agora = () => new Date().toISOString(),
+  log = console.log,
+} = {}) {
   if (!tag) throw new Error("uso: npm run liberar -- vX.Y.Z");
 
   const release = JSON.parse(
-    gh(["release", "view", tag, "-R", REPO, "--json", "assets,body,isDraft,isPrerelease"])
+    executarGh(["release", "view", tag, "-R", REPO, "--json", "assets,body,isDraft,isPrerelease"])
   );
   // Same selection montarManifesto will use — calling the shared function
   // here (instead of a separate ad-hoc lookup) is what keeps the downloaded
   // .sig and the manifest's URL naming the same binary.
   const instalador = selecionarInstalador({ tag, anexos: release.assets });
 
-  const pasta = mkdtempSync(join(tmpdir(), "liberar-"));
-  gh(["release", "download", tag, "-R", REPO, "-p", `${instalador.name}.sig`, "-D", pasta]);
-  const assinatura = readFileSync(join(pasta, `${instalador.name}.sig`), "utf8");
+  const pasta = criarPastaTemp();
+  executarGh(["release", "download", tag, "-R", REPO, "-p", `${instalador.name}.sig`, "-D", pasta]);
+  const assinatura = ler(join(pasta, `${instalador.name}.sig`), "utf8");
 
-  const atual = JSON.parse(readFileSync(MANIFESTO, "utf8"));
+  const atual = JSON.parse(ler(MANIFESTO, "utf8"));
   const manifesto = montarManifesto({
     tag,
     anexos: release.assets,
     assinatura,
     notas: release.body?.split("\n")[0] ?? `Versão ${tag.slice(1)}.`,
-    agora: new Date().toISOString(),
+    agora: agora(),
     jaLiberada: atual.version,
     isDraft: release.isDraft,
     isPrerelease: release.isPrerelease,
   });
 
-  writeFileSync(MANIFESTO, `${JSON.stringify(manifesto, null, 2)}\n`);
+  escrever(MANIFESTO, `${JSON.stringify(manifesto, null, 2)}\n`);
   // Promotion is a decision, not a side effect: the person confirms it by
   // reading the diff, so the script writes the file and stops.
-  console.log(`${MANIFESTO} atualizado para ${manifesto.version}. Confira o diff e commite:`);
-  console.log(`  git add ${MANIFESTO} && git commit -m "release: liberar ${tag}" && git push origin main`);
+  log(`${MANIFESTO} atualizado para ${manifesto.version}. Confira o diff e commite:`);
+  log(`  git add ${MANIFESTO} && git commit -m "release: liberar ${tag}" && git push origin main`);
 }
 
 if (process.argv[1]?.endsWith("liberar.mjs")) principal();
