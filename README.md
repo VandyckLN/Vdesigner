@@ -9,6 +9,11 @@ converter, outro para comprimir, um editor pesado para redimensionar, e nenhum
 deles dizendo quanto o arquivo vai pesar no fim. Tarefa de todo dia de quem
 desenvolve front end e de quem desenha — rápida, local e sem upload.
 
+A única exceção é a atualização: ao abrir, o Vdesigner consulta um arquivo de
+versão no GitHub para saber se há uma versão nova. Isso é desligável em Sobre.
+Nenhuma imagem sua sai da máquina em nenhuma hipótese — o que sobe e desce
+nessa checagem é só o número da versão.
+
 ## O que ele faz
 
 **Converter.** Entre os formatos da tabela abaixo, com controle de qualidade e
@@ -29,6 +34,9 @@ perder definição na subida.
 **Prever antes de gastar.** A prévia recalcula ao vivo enquanto você mexe nos
 controles, e a faixa de dados mostra a estimativa de tamanho do arquivo final.
 Exportações longas reportam progresso por etapa.
+
+**Atualizar com um clique.** Quando há versão nova, uma faixa avisa e a
+instalação sai num clique, sem precisar buscar o instalador manualmente.
 
 **Montar paleta de cores.** Digite uma cor (hex, com ou sem `#`) e veja na hora
 a escala tonal de 50 a 900 e as harmonias — análogas, tríade e complementar.
