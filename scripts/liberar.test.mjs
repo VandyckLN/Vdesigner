@@ -1,15 +1,35 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync as lerConfig } from "node:fs";
 import { montarManifesto, selecionarInstalador, principal } from "./liberar.mjs";
 
 const anexos = [{ name: "Vdesigner_2.1.0_x64-setup.exe" }, { name: "Vdesigner_2.1.0_x64-setup.exe.sig" }];
-const base = { tag: "v2.1.0", anexos, assinatura: "ASSINATURA", notas: "notas", agora: "2026-09-20T15:00:00Z" };
+const base = {
+  tag: "v2.1.0",
+  anexos,
+  assinatura: "ASSINATURA",
+  notas: "notas",
+  agora: "2026-09-20T15:00:00Z",
+  productName: "Vdesigner",
+};
+
+// Pins montarManifesto's productName parameter to the same string that lives
+// in src-tauri/tauri.conf.json (bundle.productName). A rename of the app
+// there without updating this test's fixtures would otherwise go unnoticed
+// while the actual installer filename it produces silently stopped matching.
+test("productName usado nos testes corresponde ao configurado em tauri.conf.json", () => {
+  const { productName } = JSON.parse(lerConfig(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
+  assert.equal(productName, base.productName);
+});
 
 test("monta o manifesto que o plugin espera", () => {
   const m = montarManifesto(base);
   assert.equal(m.version, "2.1.0");
   assert.equal(m.platforms["windows-x86_64"].signature, "ASSINATURA");
-  assert.match(m.platforms["windows-x86_64"].url, /releases\/download\/v2\.1\.0\/Vdesigner_2\.1\.0_x64-setup\.exe$/);
+  assert.match(
+    m.platforms["windows-x86_64"].url,
+    /^https:\/\/github\.com\/VandyckLN\/Vdesigner\/releases\/download\/v2\.1\.0\/Vdesigner_2\.1\.0_x64-setup\.exe$/
+  );
 });
 
 test("recusa uma release sem instalador", () => {
@@ -116,7 +136,7 @@ test("selecionarInstalador é a única autoridade e nunca diverge por ordem do a
     { name: "Vdesigner_2.1.0_x64-setup.exe.sig" },
   ];
 
-  const instalador = selecionarInstalador({ tag: "v2.1.0", anexos: anexosComOrdemEnganosa });
+  const instalador = selecionarInstalador({ tag: "v2.1.0", anexos: anexosComOrdemEnganosa, productName: "Vdesigner" });
   assert.equal(instalador.name, "Vdesigner_2.1.0_x64-setup.exe");
 
   const m = montarManifesto({
@@ -125,10 +145,16 @@ test("selecionarInstalador é a única autoridade e nunca diverge por ordem do a
     assinatura: "ASSINATURA-DA-2.1.0",
     notas: "notas",
     agora: "2026-09-20T15:00:00Z",
+    productName: "Vdesigner",
   });
   // The URL montarManifesto builds must name the same installer
-  // selecionarInstalador returned — not the first asset in the array.
-  assert.match(m.platforms["windows-x86_64"].url, /Vdesigner_2\.1\.0_x64-setup\.exe$/);
+  // selecionarInstalador returned — not the first asset in the array — and
+  // must still point at this repository's own releases, not just any URL
+  // that happens to end in the right filename.
+  assert.match(
+    m.platforms["windows-x86_64"].url,
+    /^https:\/\/github\.com\/VandyckLN\/Vdesigner\/releases\/download\/v2\.1\.0\/Vdesigner_2\.1\.0_x64-setup\.exe$/
+  );
 });
 
 // Fix round 3: the test above only calls selecionarInstalador and
@@ -173,6 +199,9 @@ test("principal() baixa o .sig do mesmo instalador que acaba no manifesto (ponta
   function lerFalso(caminho) {
     if (caminho === "updates/stable.json") {
       return JSON.stringify({ version: "0.0.0", notes: "", pub_date: "2026-01-01T00:00:00Z", platforms: {} });
+    }
+    if (caminho === "src-tauri/tauri.conf.json") {
+      return JSON.stringify({ productName: "Vdesigner" });
     }
     // Any other read is the downloaded .sig's contents — its own path is not
     // meaningful here since criarPastaTemp is also faked below.

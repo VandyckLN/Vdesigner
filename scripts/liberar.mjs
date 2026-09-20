@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 const REPO = "VandyckLN/Vdesigner";
 const MANIFESTO = "updates/stable.json";
+const TAURI_CONF = "src-tauri/tauri.conf.json";
 
 /** Numeric comparison, never lexicographic: as text, "2.10.0" sorts below
  *  "2.9.0", which would silently allow promoting a older build over a newer. */
@@ -28,11 +29,14 @@ function menorQue(a, b) {
 // selections previously drifted apart (round 1's bug) and produced a manifest
 // whose signature and URL named different binaries. Tauri's NSIS bundler
 // always emits exactly "{productName}_{version}_x64-setup.exe", so an exact
-// name match is both stricter and simpler than any pattern.
-export function selecionarInstalador({ tag, anexos }) {
+// name match is both stricter and simpler than any pattern. `productName`
+// is passed in by the caller (read from src-tauri/tauri.conf.json) rather
+// than hardcoded here: a rename of the app would otherwise silently break
+// every future promotion with a misleading "não tem instalador anexado".
+export function selecionarInstalador({ tag, anexos, productName }) {
   if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error(`tag fora do formato vX.Y.Z: ${tag}`);
   const versao = tag.slice(1);
-  const nomeEsperado = `Vdesigner_${versao}_x64-setup.exe`;
+  const nomeEsperado = `${productName}_${versao}_x64-setup.exe`;
 
   const candidatos = anexos.filter((a) => a.name === nomeEsperado);
   if (candidatos.length === 0) throw new Error(`a release ${tag} não tem instalador anexado para a versão ${versao}`);
@@ -48,14 +52,24 @@ export function selecionarInstalador({ tag, anexos }) {
   return candidatos[0];
 }
 
-export function montarManifesto({ tag, anexos, assinatura, notas, agora, jaLiberada, isDraft, isPrerelease }) {
+export function montarManifesto({
+  tag,
+  anexos,
+  assinatura,
+  notas,
+  agora,
+  jaLiberada,
+  isDraft,
+  isPrerelease,
+  productName,
+}) {
   // A draft's assets are not served from the public download URL at all, and
   // a prerelease tagged like a normal release must not reach stable users —
   // both are refused here, in the pure function, so no caller can skip them.
   if (isDraft) throw new Error(`a release ${tag} é um rascunho (draft); publique-a antes de liberar`);
   if (isPrerelease) throw new Error(`a release ${tag} é uma prerelease; não pode ser liberada como estável`);
 
-  const instalador = selecionarInstalador({ tag, anexos });
+  const instalador = selecionarInstalador({ tag, anexos, productName });
   const versao = tag.slice(1);
 
   if (!anexos.some((a) => a.name === `${instalador.name}.sig`)) {
@@ -103,13 +117,17 @@ export function principal({
 } = {}) {
   if (!tag) throw new Error("uso: npm run liberar -- vX.Y.Z");
 
+  // Read here, in principal(), and passed down as a plain value: montarManifesto
+  // and selecionarInstalador stay pure and must never read files themselves.
+  const { productName } = JSON.parse(ler(TAURI_CONF, "utf8"));
+
   const release = JSON.parse(
     executarGh(["release", "view", tag, "-R", REPO, "--json", "assets,body,isDraft,isPrerelease"])
   );
   // Same selection montarManifesto will use — calling the shared function
   // here (instead of a separate ad-hoc lookup) is what keeps the downloaded
   // .sig and the manifest's URL naming the same binary.
-  const instalador = selecionarInstalador({ tag, anexos: release.assets });
+  const instalador = selecionarInstalador({ tag, anexos: release.assets, productName });
 
   const pasta = criarPastaTemp();
   executarGh(["release", "download", tag, "-R", REPO, "-p", `${instalador.name}.sig`, "-D", pasta]);
@@ -125,6 +143,7 @@ export function principal({
     jaLiberada: atual.version,
     isDraft: release.isDraft,
     isPrerelease: release.isPrerelease,
+    productName,
   });
 
   escrever(MANIFESTO, `${JSON.stringify(manifesto, null, 2)}\n`);
