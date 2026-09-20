@@ -16,14 +16,38 @@ jobs:
       # Falha aqui, antes de qualquer setup de toolchain ou build, em vez de
       # terminar silenciosamente com um instalador sem .sig que o script de
       # liberação vai recusar para sempre.
+      #
+      # Os segredos entram por `env:` e são lidos como $env:NOME. Interpolar
+      # ${{ secrets.* }} no corpo do script colaria o texto do segredo no
+      # código antes do pwsh analisá-lo: a chave minisign tem várias linhas,
+      # então uma quebra de linha transformaria a guarda em erro de sintaxe —
+      # ou pior, fecharia a string e executaria o resto como comando, no único
+      # job que carrega a chave de assinatura.
       - name: Verificar o segredo de assinatura
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          if (-not "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}") {
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
             throw "TAURI_SIGNING_PRIVATE_KEY não está configurado; a release sairia sem assinatura."
           }
-          if (-not "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}") {
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
             throw "TAURI_SIGNING_PRIVATE_KEY_PASSWORD não está configurado; a release sairia sem assinatura."
+          }
+
+      # A tag decide o nome que o script de liberação vai procurar; a versão do
+      # tauri.conf.json decide o nome que o bundler realmente escreve. Se
+      # divergirem, gasta-se um build inteiro para falhar na promoção — e se
+      # passasse, o aplicativo reportaria a versão antiga, veria a nova,
+      # instalaria e reportaria a antiga de novo, atualizando para sempre.
+      - name: Conferir que a tag bate com a versão do tauri.conf.json
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $versaoConfig = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ($tag -ne "v$versaoConfig") {
+            throw "a tag $tag não corresponde à versão $versaoConfig em src-tauri/tauri.conf.json; bumpe a versão antes de marcar."
           }
 
       - uses: dtolnay/rust-toolchain@1.98
@@ -45,6 +69,34 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: cargo tauri build
+
+      # O CI guarda a chave privada como segredo e o repositório guarda a
+      # pública no tauri.conf.json; nada garante que sejam o mesmo par. Com um
+      # par trocado o build fica verde, o .sig é anexado, a liberação aceita —
+      # e a primeira notícia do erro é que nenhuma cópia instalada consegue
+      # atualizar. Aqui a assinatura recém-produzida é conferida contra a chave
+      # pública lida do próprio arquivo de configuração (nunca escrita no
+      # workflow), então um par trocado derruba a release em vez de publicá-la.
+      - name: Conferir a assinatura contra a chave pública do tauri.conf.json
+        shell: pwsh
+        run: |
+          choco install minisign -y --no-progress
+          $setup = Get-ChildItem -Recurse -Filter *-setup.exe target/release/bundle/nsis | Select-Object -First 1
+          if (-not $setup) { throw "nenhum instalador encontrado para conferir a assinatura." }
+          $caminhoSig = "$($setup.FullName).sig"
+          if (-not (Test-Path $caminhoSig)) { throw "o instalador saiu sem .sig; a assinatura não foi produzida." }
+
+          # Tanto a pubkey na configuração quanto o .sig do Tauri guardam o
+          # arquivo minisign inteiro em base64; o minisign precisa deles crus.
+          $pubkey = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).plugins.updater.pubkey
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP/vdesigner.pub", [Convert]::FromBase64String($pubkey))
+          $sig = (Get-Content $caminhoSig -Raw).Trim()
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP/vdesigner.sig", [Convert]::FromBase64String($sig))
+
+          & minisign -V -p "$env:RUNNER_TEMP/vdesigner.pub" -x "$env:RUNNER_TEMP/vdesigner.sig" -m $setup.FullName
+          if ($LASTEXITCODE -ne 0) {
+            throw "a assinatura do instalador não confere com a chave pública do tauri.conf.json; o par de chaves do CI está errado."
+          }
 
       - name: Build portable zip
         shell: pwsh
