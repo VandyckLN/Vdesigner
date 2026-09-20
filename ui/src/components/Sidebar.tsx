@@ -1,11 +1,12 @@
 import { useRef } from "react";
 import { VdkMark } from "./VdkMark";
 
-export type Screen = "imagem" | "cores";
+export type Screen = "imagem" | "cores" | "sobre";
 
 const SCREENS: { id: Screen; label: string; glyph: string }[] = [
   { id: "imagem", label: "Imagem", glyph: "▣" },
   { id: "cores", label: "Cores", glyph: "◑" },
+  { id: "sobre", label: "Sobre", glyph: "◇" },
 ];
 
 /** id of the tab button for a given screen — shared with App.tsx so each

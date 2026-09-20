@@ -381,3 +381,42 @@ body {
 /* The ramp opt-in reads as a checkbox followed by its words, unlike the
    stacked field labels around it. */
 .colors-controls .colors-ramp-toggle { flex-direction: row; align-items: center; gap: 6px; color: var(--ink); }
+
+/* Filete embaixo e nada mais: a faixa é uma linha de informação no topo da
+   janela, não um cartão. Sem sombra, sem raio, sem preenchimento de acento. */
+.update-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  padding: calc(var(--step) * 0.6) var(--gutter);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.9rem;
+}
+
+.update-banner-text { color: var(--ink); }
+.update-banner-error { color: var(--ink); font-family: var(--mono); font-size: 0.82rem; }
+.update-banner-progress { color: var(--dim); font-family: var(--mono); }
+
+/* Empurra os dois botões para a direita sem depender de quais spans
+   apareceram antes deles, que variam com o estado. */
+.update-banner > button:first-of-type { margin-left: auto; }
+
+/* A tela Sobre segue a mesma coluna de bloco único que .colors: sem cartão,
+   sem sombra, apenas o respiro do grid vertical padrão. */
+.about { padding: var(--gutter); display: flex; flex-direction: column; gap: var(--step); align-items: flex-start; }
+.about-version { color: var(--ink); font-family: var(--mono); font-size: 12px; margin: 0; }
+
+/* O resultado da busca manual é informação, não erro: mesmo tratamento de
+   fio à esquerda que .colors-error usa para separar-se do texto comum, sem
+   tomar a cor de acento como preenchimento. */
+.about-result { color: var(--ink); border-left: 1px solid var(--accent); padding-left: var(--step); margin: 0; font-size: 12px; }
+
+/* Mesmo tratamento que a faixa de atualização dá aos seus dois avisos, para
+   que instalar pela tela Sobre não pareça outro recurso. */
+.about-error { color: var(--ink); font-family: var(--mono); font-size: 0.82rem; }
+.about-progress { color: var(--dim); font-family: var(--mono); font-size: 0.82rem; }
+
+.about-toggle { display: flex; align-items: center; gap: 6px; color: var(--ink); font-size: 12px; }
+.about-note { color: var(--dim); font-size: 11px; margin: 0; max-width: 46ch; }

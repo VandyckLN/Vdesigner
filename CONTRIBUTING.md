@@ -48,7 +48,7 @@ implementam `tablist` completo: setas, Home, End e tabindex móvel.
 
 - `cargo fmt --all --check` limpo
 - `cargo clippy --all-targets -- -D warnings` limpo
-- `cargo test --all` e `npm --prefix ui run test` passando
+- `cargo test --all`, `npm --prefix ui run test` e `npm run test:scripts` passando
 - teste cobrindo o comportamento novo, no mesmo estilo dos que já existem
 - lógica de imagem e de cor em `crates/core`
 
@@ -61,7 +61,7 @@ pinta cor, o teste que vale é em Rust, sobre os valores.
 
 ## Lançamento
 
-Cinco atos. Nenhum é opcional.
+Seis atos. Nenhum é opcional.
 
 ### 1. Trabalhe numa branch
 
@@ -105,8 +105,9 @@ junto no push da branch.
 
 **Não compile nem anexe nada à mão.** O `.github/workflows/release.yml` dispara
 sozinho no push de qualquer tag `v*`: compila em `windows-latest`, gera o
-instalador NSIS, monta o zip portátil, calcula os SHA-256 em `checksums.txt` e
-cria a release com os três anexados. Leva uns quinze minutos.
+instalador NSIS, assina-o com minisign, monta o zip portátil, calcula os
+SHA-256 em `checksums.txt` e cria a release com os quatro anexados (instalador,
+`.sig`, zip portátil e `checksums.txt`). Leva uns quinze minutos.
 
     gh run watch
 
@@ -127,3 +128,40 @@ instalado globalmente: o binário vive em `ui/node_modules`, e o comando roda da
 O instalador não é assinado. O SmartScreen do Windows vai avisar quem baixar,
 até que haja um certificado de assinatura de código. Vale dizer isso nas notas
 de cada lançamento.
+
+### 6. Instale, teste, e só então libere
+
+Publicar a release não a entrega a ninguém que já tem o Vdesigner instalado —
+ela só fica disponível para quem baixar do zero. Quem entrega a quem já
+instalou é a liberação: o passo que atualiza `updates/stable.json` e faz o
+banner de atualização aparecer nas cópias existentes. As duas coisas são
+diferentes, e a liberação é irreversível o bastante — atinge todo mundo já
+instalado — para não pular a checagem antes dela.
+
+Antes de liberar: instale a versão nova na própria máquina, a partir do que o
+CI publicou, e teste. Só depois de confirmar que ela funciona, rode a
+promoção:
+
+    npm run liberar -- vX.Y.Z
+
+O script busca a release no GitHub, baixa a assinatura do instalador, escreve
+`updates/stable.json` com a nova versão — e para aí. Ele não commita nem dá
+push; ele imprime os comandos de `git add`, `commit` e `push` para você rodar
+depois de conferir o diff. É a leitura desse diff que é, na prática, a
+liberação: só depois do push a atualização fica visível para quem já tem o
+Vdesigner instalado.
+
+## As chaves de assinatura
+
+O updater verifica a assinatura de cada atualização antes de instalar. A
+chave pública mora em `src-tauri/tauri.conf.json` e é commitada — não tem
+segredo nela, é só o que o aplicativo usa para conferir. A chave privada e a
+senha dela são segredos do GitHub Actions, `TAURI_SIGNING_PRIVATE_KEY` e
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, e a cópia de uso pessoal delas pertence a
+um gerenciador de senhas, fora da máquina de build.
+
+Se a chave privada se perder, a atualização automática para permanentemente
+para quem já tem o Vdesigner instalado. O aplicativo continua funcionando —
+ninguém perde o que já tem — mas ninguém recebe mais versão nova sozinho:
+quem quiser atualizar vai ter que baixar e instalar a versão seguinte à mão,
+para sempre, porque uma chave nova não confere assinatura feita com a antiga.

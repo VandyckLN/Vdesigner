@@ -39,3 +39,7 @@ jobs:
       - run: npm --prefix ui ci
       - run: npm --prefix ui run lint
       - run: npm --prefix ui run test
+      # Testa scripts/liberar.mjs com node:test puro; sem dependências, não
+      # precisa de instalação na raiz. Roda via package.json para não duplicar
+      # o padrão de glob em dois lugares.
+      - run: npm run test:scripts
