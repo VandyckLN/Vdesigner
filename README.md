@@ -60,8 +60,8 @@ paleta salva de volta.
 | Codificadores | `webp`, `ravif` (AVIF, com rotinas em assembly via NASM) |
 | Aplicação | Tauri 2 — janela nativa sobre o WebView2 do Windows |
 | Interface | React 18, TypeScript, Vite |
-| Testes | 175 no total — 128 em Rust (`cargo test`) e 47 na interface (Vitest, Testing Library) |
-| CI | GitHub Actions — `rustfmt`, `clippy` com avisos como erro, e as duas suítes |
+| Testes | 225 no total — 131 em Rust (`cargo test`), 78 na interface (Vitest, Testing Library) e 16 nos scripts de release (`node:test`) |
+| CI | GitHub Actions — `rustfmt`, `clippy` com avisos como erro, e as três suítes |
 
 O motor vive em `crates/core` e é uma biblioteca pura: não conhece Tauri, não
 conhece Windows e não conhece interface nenhuma. Toda operação é descrita como
@@ -103,6 +103,7 @@ Testes:
 
     cargo test --all
     npm --prefix ui run test
+    npm run test:scripts
 
 ## Contribuindo
 

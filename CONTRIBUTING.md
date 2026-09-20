@@ -48,7 +48,7 @@ implementam `tablist` completo: setas, Home, End e tabindex móvel.
 
 - `cargo fmt --all --check` limpo
 - `cargo clippy --all-targets -- -D warnings` limpo
-- `cargo test --all` e `npm --prefix ui run test` passando
+- `cargo test --all`, `npm --prefix ui run test` e `npm run test:scripts` passando
 - teste cobrindo o comportamento novo, no mesmo estilo dos que já existem
 - lógica de imagem e de cor em `crates/core`
 
@@ -105,8 +105,9 @@ junto no push da branch.
 
 **Não compile nem anexe nada à mão.** O `.github/workflows/release.yml` dispara
 sozinho no push de qualquer tag `v*`: compila em `windows-latest`, gera o
-instalador NSIS, monta o zip portátil, calcula os SHA-256 em `checksums.txt` e
-cria a release com os três anexados. Leva uns quinze minutos.
+instalador NSIS, assina-o com minisign, monta o zip portátil, calcula os
+SHA-256 em `checksums.txt` e cria a release com os quatro anexados (instalador,
+`.sig`, zip portátil e `checksums.txt`). Leva uns quinze minutos.
 
     gh run watch
 
