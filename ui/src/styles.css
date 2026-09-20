@@ -381,3 +381,24 @@ body {
 /* The ramp opt-in reads as a checkbox followed by its words, unlike the
    stacked field labels around it. */
 .colors-controls .colors-ramp-toggle { flex-direction: row; align-items: center; gap: 6px; color: var(--ink); }
+
+/* Filete embaixo e nada mais: a faixa é uma linha de informação no topo da
+   janela, não um cartão. Sem sombra, sem raio, sem preenchimento de acento. */
+.update-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  padding: calc(var(--step) * 0.6) var(--gutter);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.9rem;
+}
+
+.update-banner-text { color: var(--ink); }
+.update-banner-error { color: var(--ink); font-family: var(--mono); font-size: 0.82rem; }
+.update-banner-progress { color: var(--dim); font-family: var(--mono); }
+
+/* Empurra os dois botões para a direita sem depender de quais spans
+   apareceram antes deles, que variam com o estado. */
+.update-banner > button:first-of-type { margin-left: auto; }
