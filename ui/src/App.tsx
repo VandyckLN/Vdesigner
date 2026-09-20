@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { Sidebar, panelId, tabId, type Screen } from "./components/Sidebar";
+import { Colors } from "./screens/Colors";
 import { Editor } from "./screens/Editor";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "tif", "svg"];
 
 export function App() {
+  const [screen, setScreen] = useState<Screen>("imagem");
+
   const pickFile = async () => {
     const selected = await open({
       multiple: false,
@@ -17,5 +22,20 @@ export function App() {
     return typeof selected === "string" ? selected : null;
   };
 
-  return <Editor onOpenFile={pickFile} onPickDirectory={pickDirectory} />;
+  return (
+    <div className="app-shell">
+      <Sidebar current={screen} onChange={setScreen} />
+      {/* Both panels stay mounted and the inactive one carries `hidden`,
+          because a tab's aria-controls must point at an element that exists:
+          with only the active screen rendered, the inactive tab referenced a
+          missing id, which is invalid per WAI-ARIA. `hidden` keeps it out of
+          the accessibility tree and off the screen just the same. */}
+      <div role="tabpanel" id={panelId("imagem")} aria-labelledby={tabId("imagem")} hidden={screen !== "imagem"}>
+        <Editor onOpenFile={pickFile} onPickDirectory={pickDirectory} />
+      </div>
+      <div role="tabpanel" id={panelId("cores")} aria-labelledby={tabId("cores")} hidden={screen !== "cores"}>
+        <Colors onPickDirectory={pickDirectory} />
+      </div>
+    </div>
+  );
 }

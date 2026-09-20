@@ -107,6 +107,51 @@ export interface ExportProgress {
 
 const EXPORT_PROGRESS_EVENT = "export-progress";
 
+export type ColorFormat = "Hex" | "Rgb" | "Hsl" | "Oklch";
+export type Generated = "css" | "tailwind";
+
+export interface Swatch {
+  nome: string;
+  hex: string;
+  rampa: boolean;
+}
+
+export interface GradientRef {
+  nome: string;
+  de: string;
+  para: string;
+}
+
+export interface Palette {
+  versao: number;
+  nome: string;
+  gerar: Generated[];
+  cores: Swatch[];
+  degrades: GradientRef[];
+}
+
+export interface PaletteSnapshot {
+  palette: Palette;
+  on_disk: string;
+}
+
+export interface Variations {
+  ramp: string[];
+  complementary: string;
+  analogous: string[];
+  triad: string[];
+}
+
+/** Rungs of the generated scale, mirroring vdesigner_core::RAMP_STEPS. */
+export const RAMP_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
+
+/** Must track vdesigner_core::PALETTE_FORMAT_VERSION (crates/core/src/palette.rs).
+ *  The Rust side owns the on-disk format and refuses a palette whose `versao`
+ *  is newer than its own, so the number the UI writes is not free-form: it is
+ *  pinned here, next to the other shared constants, instead of being spelled
+ *  out inline where a bump on the Rust side would silently leave it behind. */
+export const PALETTE_FORMAT_VERSION = 1;
+
 export const api = {
   openImage: (path: string) => invoke<ImageInfo>("open_image", { path }),
   preview: (job: Job) => invoke<PreviewResult>("preview", { job }),
@@ -115,4 +160,10 @@ export const api = {
     invoke<ExportResult>("export", { job, outputDir, fileStem, overwrite }),
   onExportProgress: (handler: (progress: ExportProgress) => void): Promise<UnlistenFn> =>
     listen<ExportProgress>(EXPORT_PROGRESS_EVENT, (event) => handler(event.payload)),
+  loadPalette: (dir: string) => invoke<PaletteSnapshot | null>("load_palette", { dir }),
+  savePalette: (dir: string, palette: Palette, expected: string | null) =>
+    invoke<string>("save_palette", { dir, palette, expected }),
+  colorVariations: (hex: string) => invoke<Variations>("color_variations", { hex }),
+  formatColor: (hex: string, format: ColorFormat) =>
+    invoke<string>("format_color", { hex, format }),
 };

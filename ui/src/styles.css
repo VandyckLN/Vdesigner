@@ -272,3 +272,112 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* A lateral separa-se do conteúdo por fio de 1px, como todo o resto da
+   identidade. O acento marca apenas o estado selecionado — nunca preenche. */
+.app-shell { display: grid; grid-template-columns: auto 1fr; min-height: 100vh; }
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--gutter) 0;
+  border-right: 1px solid var(--rule);
+  background: var(--bg-2);
+}
+
+.sidebar-mark { display: block; width: 22px; margin: 0 auto var(--gutter); color: var(--dim); }
+.sidebar-mark svg { width: 100%; height: auto; display: block; }
+
+.sidebar-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 76px;
+  padding: 10px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.sidebar-tab[aria-selected="true"] { color: var(--ink); }
+.sidebar-tab[aria-selected="true"] .sidebar-glyph { color: var(--accent); }
+.sidebar-tab:hover { color: var(--ink); }
+.sidebar-glyph { font-size: 18px; line-height: 1; }
+
+.colors { padding: var(--gutter); display: flex; flex-direction: column; gap: var(--gutter); }
+.colors-controls { display: flex; flex-wrap: wrap; gap: var(--step); align-items: flex-end; }
+.colors-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--dim); }
+.colors-error { color: var(--ink); border-left: 1px solid var(--accent); padding-left: var(--step); margin: 0; }
+
+.ramp, .harmony { display: flex; list-style: none; margin: 0; padding: 0; border: 1px solid var(--rule); }
+.ramp li, .harmony li {
+  flex: 1;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.ramp li + li, .harmony li + li { border-left: 1px solid var(--rule); }
+
+/* Names the relationship each harmony swatch carries (complementary,
+   analogous, triad), so it isn't communicated by color position alone. */
+.harmony li span { font-family: var(--sans); font-size: 9px; letter-spacing: 0.03em; }
+
+
+/* A swatch is a measuring instrument: the chip must paint the exact hex the
+   label reports. Any blend mode or colour mix here would composite the chip
+   with the page backdrop (--bg) and show the user a colour that is not the
+   one they are about to write into their project — worst at the dark end,
+   where the difference blend lifted #460000 to #3B0C0E. So the chip carries
+   the inline background and nothing else. */
+.swatch-chip {
+  flex: 1;
+  min-height: 40px;
+  display: block;
+}
+
+/* Legibility is bought with a separate opaque surface instead of a blend:
+   the label sits on --bg-2 under the usual 1px hairline, so it is always
+   readable and never touches the colour above it. */
+.swatch-meta {
+  background: var(--bg-2);
+  color: var(--ink);
+  border-top: 1px solid var(--rule);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.palette-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--rule); }
+.palette-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  padding: 6px var(--step);
+}
+.palette-list li + li { border-top: 1px solid var(--rule); }
+.palette-list .swatch-chip { flex: 0 0 auto; width: 28px; height: 28px; }
+.palette-name { flex: 1; font-size: 12px; }
+.palette-hex { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+.palette-remove {
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--dim);
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.palette-remove:hover { color: var(--ink); border-color: var(--accent); }
+.palette-empty { color: var(--dim); font-size: 12px; margin: 0; }
+/* The ramp opt-in reads as a checkbox followed by its words, unlike the
+   stacked field labels around it. */
+.colors-controls .colors-ramp-toggle { flex-direction: row; align-items: center; gap: 6px; color: var(--ink); }
