@@ -25,7 +25,22 @@ jobs:
           echo "C:\Program Files\NASM" >> $env:GITHUB_PATH
       - run: npm --prefix ui ci
       - run: cargo install tauri-cli --version "^2" --locked
-      - run: cargo tauri build
+
+      # Falha aqui, antes dos ~15 minutos de build, em vez de terminar
+      # silenciosamente com um instalador sem .sig que o script de liberação
+      # vai recusar para sempre.
+      - name: Verificar o segredo de assinatura
+        shell: pwsh
+        run: |
+          if (-not "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}") {
+            throw "TAURI_SIGNING_PRIVATE_KEY não está configurado; a release sairia sem assinatura."
+          }
+
+      - name: cargo tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: cargo tauri build
 
       - name: Build portable zip
         shell: pwsh
@@ -43,5 +58,6 @@ jobs:
         with:
           files: |
             target/release/bundle/nsis/*-setup.exe
+            target/release/bundle/nsis/*-setup.exe.sig
             vdesigner-portable-windows-x64.zip
             checksums.txt
