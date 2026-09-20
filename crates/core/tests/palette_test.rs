@@ -129,6 +129,29 @@ fn rejects_a_gradient_named_the_same_as_a_colour() {
     );
 }
 
+/// A gradient endpoint must resolve against a *colour* name, never against
+/// another gradient's name — even though both share one namespace for
+/// collision purposes. This distinguishes the `seen` set (all names, for
+/// uniqueness) from the `colour_names` set (only colours, for endpoint
+/// resolution) inside `validate_palette`.
+#[test]
+fn rejects_a_gradient_pointing_at_another_gradient_instead_of_a_colour() {
+    let mut palette = sample();
+    // The second gradient's endpoint names the FIRST gradient, which by then
+    // is already present in the uniqueness set — so this only fails if
+    // endpoint resolution is kept separate from the uniqueness set.
+    let mut segundo = palette.degrades[0].clone();
+    segundo.nome = "outro-degrade".into();
+    segundo.para = palette.degrades[0].nome.clone();
+    palette.degrades.push(segundo);
+
+    let error = validate_palette(&palette).unwrap_err();
+    assert!(
+        matches!(error, CoreError::InvalidParameter(ref m) if m.contains(&palette.degrades[0].nome)),
+        "erro pouco claro: {error}"
+    );
+}
+
 #[test]
 fn rejects_two_gradients_with_the_same_name() {
     let mut palette = sample();

@@ -30,6 +30,14 @@ perder definição na subida.
 controles, e a faixa de dados mostra a estimativa de tamanho do arquivo final.
 Exportações longas reportam progresso por etapa.
 
+**Montar paleta de cores.** Digite uma cor (hex, com ou sem `#`) e veja na hora
+a escala tonal de 50 a 900 e as harmonias — análogas, tríade e complementar.
+Copie qualquer uma em hex, RGB, HSL ou OKLCH. Dê um nome à cor, escolha se ela
+entra como escala ou como valor único, e grave numa pasta de projeto: o
+Vdesigner escreve `vdesigner-cores.json` (a paleta, para reabrir depois) e
+`cores.css` (as variáveis prontas para usar). Reabrir a mesma pasta traz a
+paleta salva de volta.
+
 ## Formatos
 
 | Entrada | Saída |
@@ -44,7 +52,7 @@ Exportações longas reportam progresso por etapa.
 | Codificadores | `webp`, `ravif` (AVIF, com rotinas em assembly via NASM) |
 | Aplicação | Tauri 2 — janela nativa sobre o WebView2 do Windows |
 | Interface | React 18, TypeScript, Vite |
-| Testes | 82 no total — 64 em Rust (`cargo test`) e 18 na interface (Vitest, Testing Library) |
+| Testes | 175 no total — 128 em Rust (`cargo test`) e 47 na interface (Vitest, Testing Library) |
 | CI | GitHub Actions — `rustfmt`, `clippy` com avisos como erro, e as duas suítes |
 
 O motor vive em `crates/core` e é uma biblioteca pura: não conhece Tauri, não

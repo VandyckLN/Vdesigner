@@ -1,4 +1,3 @@
-use std::path::Path;
 use tempfile::tempdir;
 use vdesigner::palette_io::{self, PaletteIoError};
 use vdesigner_core::{Generated, GradientRef, Palette, Swatch, PALETTE_FORMAT_VERSION};
@@ -95,8 +94,14 @@ fn saving_over_an_unchanged_file_succeeds() {
 
 #[test]
 fn saving_into_a_folder_that_does_not_exist_reports_a_readable_error() {
-    let missing = Path::new("Z:/pasta/que/nao/existe");
-    let error = palette_io::save(missing, &sample(), None).unwrap_err();
+    let dir = tempdir().unwrap();
+    let missing = dir
+        .path()
+        .join("pasta")
+        .join("que")
+        .join("nao")
+        .join("existe");
+    let error = palette_io::save(&missing, &sample(), None).unwrap_err();
     assert!(matches!(error, PaletteIoError::Io(_)));
 }
 
@@ -117,7 +122,7 @@ fn a_corrupt_file_reports_a_readable_error_instead_of_an_empty_palette() {
 /// nível para interromper uma escrita no meio — apenas garante que a escrita
 /// falhe de verdade antes de chegar ao JSON da paleta.
 #[test]
-fn uma_falha_ao_escrever_arquivo_derivado_preserva_a_paleta_antiga_intacta() {
+fn a_failure_writing_a_derived_file_leaves_the_old_palette_intact() {
     let dir = tempdir().unwrap();
     let written = palette_io::save(dir.path(), &sample(), None).unwrap();
 
@@ -147,7 +152,7 @@ fn uma_falha_ao_escrever_arquivo_derivado_preserva_a_paleta_antiga_intacta() {
 /// gravação continua indo e voltando (round-trip) corretamente, e nenhum
 /// arquivo temporário sobra na pasta depois de um save bem-sucedido.
 #[test]
-fn um_save_bem_sucedido_nao_deixa_arquivo_temporario_para_tras() {
+fn a_successful_save_leaves_no_temporary_file_behind() {
     let dir = tempdir().unwrap();
     let written = palette_io::save(dir.path(), &sample(), None).unwrap();
 

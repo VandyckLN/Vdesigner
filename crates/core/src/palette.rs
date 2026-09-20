@@ -1,7 +1,7 @@
 //! The palette file format. Pure: turns text into data and data into text,
 //! and never opens a file — the Tauri layer owns the disk.
 
-use crate::color::{parse_hex, Color};
+use crate::color::{format, gradient, parse_hex, ramp, Color, ColorFormat, RAMP_STEPS};
 use crate::error::CoreError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -138,8 +138,6 @@ fn validate_name(name: &str) -> Result<(), CoreError> {
         )))
     }
 }
-
-use crate::color::{format, gradient, ramp, ColorFormat, RAMP_STEPS};
 
 pub const CSS_FILE_NAME: &str = "cores.css";
 pub const TAILWIND_FILE_NAME: &str = "cores.tailwind.json";
