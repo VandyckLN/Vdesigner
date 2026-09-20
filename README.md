@@ -107,12 +107,9 @@ Abra uma issue descrevendo o que pretende antes de um trabalho grande, para não
 gastar seu tempo numa direção que não casa com o resto. Para mudanças pequenas,
 o pull request direto já serve.
 
-O que se espera de um pull request:
-
-- `cargo fmt --all --check` e `cargo clippy --all-targets -- -D warnings` limpos
-- `cargo test --all` e `npm --prefix ui run test` passando
-- teste cobrindo o comportamento novo, no mesmo estilo dos que já existem
-- lógica de imagem em `crates/core`, nunca no código da janela
+O [CONTRIBUTING.md](CONTRIBUTING.md) tem o resto: como o código está dividido,
+as convenções de nome e de teste, o que um pull request precisa ter, e como sai
+um lançamento.
 
 ## Limitações conhecidas
 
