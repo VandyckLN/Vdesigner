@@ -25,21 +25,17 @@ export function App() {
   return (
     <div className="app-shell">
       <Sidebar current={screen} onChange={setScreen} />
-      {/* Each screen is wrapped rather than given the role itself, so the
-          panel's own top-level element (main.editor / main.colors) keeps its
-          existing props untouched while still satisfying the tabs pattern:
-          one tabpanel per tab, wired back to it with aria-labelledby. Only
-          the active screen is mounted, same as before this change, so
-          switching screens still resets the inactive one's local state. */}
-      {screen === "imagem" ? (
-        <div role="tabpanel" id={panelId("imagem")} aria-labelledby={tabId("imagem")}>
-          <Editor onOpenFile={pickFile} onPickDirectory={pickDirectory} />
-        </div>
-      ) : (
-        <div role="tabpanel" id={panelId("cores")} aria-labelledby={tabId("cores")}>
-          <Colors onPickDirectory={pickDirectory} />
-        </div>
-      )}
+      {/* Both panels stay mounted and the inactive one carries `hidden`,
+          because a tab's aria-controls must point at an element that exists:
+          with only the active screen rendered, the inactive tab referenced a
+          missing id, which is invalid per WAI-ARIA. `hidden` keeps it out of
+          the accessibility tree and off the screen just the same. */}
+      <div role="tabpanel" id={panelId("imagem")} aria-labelledby={tabId("imagem")} hidden={screen !== "imagem"}>
+        <Editor onOpenFile={pickFile} onPickDirectory={pickDirectory} />
+      </div>
+      <div role="tabpanel" id={panelId("cores")} aria-labelledby={tabId("cores")} hidden={screen !== "cores"}>
+        <Colors onPickDirectory={pickDirectory} />
+      </div>
     </div>
   );
 }

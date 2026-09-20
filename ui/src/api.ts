@@ -145,6 +145,13 @@ export interface Variations {
 /** Rungs of the generated scale, mirroring vdesigner_core::RAMP_STEPS. */
 export const RAMP_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
 
+/** Must track vdesigner_core::PALETTE_FORMAT_VERSION (crates/core/src/palette.rs).
+ *  The Rust side owns the on-disk format and refuses a palette whose `versao`
+ *  is newer than its own, so the number the UI writes is not free-form: it is
+ *  pinned here, next to the other shared constants, instead of being spelled
+ *  out inline where a bump on the Rust side would silently leave it behind. */
+export const PALETTE_FORMAT_VERSION = 1;
+
 export const api = {
   openImage: (path: string) => invoke<ImageInfo>("open_image", { path }),
   preview: (job: Job) => invoke<PreviewResult>("preview", { job }),

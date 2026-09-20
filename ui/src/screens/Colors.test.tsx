@@ -17,6 +17,13 @@ const variations = {
   triad: ["#96908A", "#8A9096"],
 };
 
+/** The exact rgb() jsdom serialises a #rrggbb value to — the yardstick for
+ *  "this chip paints precisely the hex the label reports". */
+function hexToRgb(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(api, "colorVariations").mockResolvedValue(variations);
@@ -160,6 +167,167 @@ describe("Colors", () => {
     // ship the previous (or empty) snapshot under the failed directory.
     expect(screen.getByRole("button", { name: /^gravar$/i })).toBeDisabled();
     expect(api.savePalette).not.toHaveBeenCalled();
+  });
+
+  // jsdom does not composite, so no rendering test can catch a blend mode.
+  // This asserts the two properties that make the swatch trustworthy on a
+  // real screen: the chip carries the exact hex inline, and nothing on the
+  // element that paints the colour blends or mixes it.
+  it("pinta cada degrau com o hex exato e sem modo de mistura", async () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.type(screen.getByLabelText(/cor em hex/i), "#8A9096");
+
+    const ramp = await screen.findByRole("list", { name: /escala/i });
+    const items = within(ramp).getAllByRole("listitem");
+    items.forEach((item, index) => {
+      const chip = item.querySelector(".swatch-chip") as HTMLElement;
+      expect(chip).not.toBeNull();
+      // jsdom's CSSOM re-serialises a hex as rgb(), so compare against the
+      // hex's exact rgb() form: any mixing or rounding on the way in would
+      // change these numbers.
+      expect(chip.style.background).toBe(hexToRgb(variations.ramp[index]));
+      expect(chip.style.mixBlendMode).toBe("");
+      // The colour lives on the chip, never on the list item that also holds
+      // the label — that is what used to composite with the page backdrop.
+      expect(item.style.background).toBe("");
+      expect(item.style.mixBlendMode).toBe("");
+    });
+  });
+
+  it("aceita um hex de três dígitos sem cerquilha", async () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.type(screen.getByLabelText(/cor em hex/i), "0f8");
+
+    await waitFor(() => {
+      expect(api.colorVariations).toHaveBeenCalledWith("#0f8");
+    });
+    expect(await screen.findByRole("list", { name: /escala/i })).toBeInTheDocument();
+  });
+
+  it("explica por que um hex com tamanho errado foi recusado", async () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.type(screen.getByLabelText(/cor em hex/i), "#12345");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/três ou seis/i);
+    expect(screen.queryByRole("list", { name: /escala/i })).not.toBeInTheDocument();
+  });
+
+  it("avisa quando a área de transferência recusa a cópia", async () => {
+    vi.mocked(writeText).mockRejectedValueOnce(new Error("clipboard bloqueada"));
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.type(screen.getByLabelText(/cor em hex/i), "#8A9096");
+    await userEvent.click(await screen.findByRole("button", { name: /copiar/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível copiar/i);
+  });
+
+  it("avisa quando o motor falha ao formatar a cor para cópia", async () => {
+    vi.spyOn(api, "formatColor").mockRejectedValue(new Error("formato desconhecido"));
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.type(screen.getByLabelText(/cor em hex/i), "#8A9096");
+    await userEvent.click(await screen.findByRole("button", { name: /copiar/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível copiar/i);
+  });
+
+  it("mostra as cores da paleta carregada com nome e hex em texto", async () => {
+    vi.spyOn(api, "loadPalette").mockResolvedValue({
+      palette: {
+        versao: 1,
+        nome: "paleta",
+        gerar: ["css"],
+        cores: [
+          { nome: "acento", hex: "#8A9096", rampa: false },
+          { nome: "tinta", hex: "#EDE8DE", rampa: true },
+        ],
+        degrades: [],
+      },
+      on_disk: "existing-text",
+    });
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: /escolher pasta/i }));
+
+    const list = await screen.findByRole("list", { name: /cores da paleta/i });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(list).getByText("acento")).toBeInTheDocument();
+    expect(within(list).getByText("#8A9096")).toBeInTheDocument();
+    expect(within(list).getByText("tinta")).toBeInTheDocument();
+    expect(within(list).getByText("#EDE8DE")).toBeInTheDocument();
+    // The remove control names the colour it removes, so it is unambiguous
+    // to anyone hearing the buttons out of context.
+    expect(
+      within(list).getByRole("button", { name: /remover a cor acento/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("remove uma cor e grava a paleta encurtada", async () => {
+    vi.spyOn(api, "loadPalette").mockResolvedValue({
+      palette: {
+        versao: 1,
+        nome: "paleta",
+        gerar: ["css"],
+        cores: [
+          { nome: "acento", hex: "#8A9096", rampa: false },
+          { nome: "tinta", hex: "#EDE8DE", rampa: true },
+        ],
+        degrades: [],
+      },
+      on_disk: "existing-text",
+    });
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: /escolher pasta/i }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /remover a cor acento/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.savePalette).toHaveBeenCalledWith(
+        "D:/projeto",
+        expect.objectContaining({
+          cores: [{ nome: "tinta", hex: "#EDE8DE", rampa: true }],
+        }),
+        "existing-text",
+      );
+    });
+    const list = await screen.findByRole("list", { name: /cores da paleta/i });
+    expect(within(list).queryByText("acento")).not.toBeInTheDocument();
+  });
+
+  it("leva a escolha de gerar a escala para o payload gravado", async () => {
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: /escolher pasta/i }));
+    await userEvent.type(screen.getByLabelText(/cor em hex/i), "#8A9096");
+    await userEvent.type(screen.getByLabelText(/nome da cor/i), "acento");
+    await userEvent.click(screen.getByLabelText(/gerar a escala de tons/i));
+    await userEvent.click(screen.getByRole("button", { name: /^adicionar$/i }));
+
+    await waitFor(() => {
+      expect(api.savePalette).toHaveBeenCalledWith(
+        "D:/projeto",
+        expect.objectContaining({
+          cores: [{ nome: "acento", hex: "#8A9096", rampa: true }],
+        }),
+        null,
+      );
+    });
+  });
+
+  it("grava rampa falsa quando a escala não é pedida", async () => {
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: /escolher pasta/i }));
+    await userEvent.type(screen.getByLabelText(/cor em hex/i), "#8A9096");
+    await userEvent.type(screen.getByLabelText(/nome da cor/i), "acento");
+    await userEvent.click(screen.getByRole("button", { name: /^adicionar$/i }));
+
+    await waitFor(() => {
+      expect(api.savePalette).toHaveBeenCalledWith(
+        "D:/projeto",
+        expect.objectContaining({
+          cores: [{ nome: "acento", hex: "#8A9096", rampa: false }],
+        }),
+        null,
+      );
+    });
   });
 
   it("identifica cada harmonia com um rótulo em português", async () => {
