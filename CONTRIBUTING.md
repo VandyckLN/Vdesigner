@@ -101,28 +101,28 @@ O `--no-ff` força um commit de merge, então o histórico mostra onde cada
 funcionalidade entrou. A tag precisa de um `git push` próprio — ela não vai
 junto no push da branch.
 
-### 5. Gere o instalador e publique
+### 5. Deixe o CI publicar
 
-O `tauri` não está instalado globalmente: o binário vive em `ui/node_modules`, e
-o comando roda da **raiz** do projeto, não de dentro de `ui/`.
+**Não compile nem anexe nada à mão.** O `.github/workflows/release.yml` dispara
+sozinho no push de qualquer tag `v*`: compila em `windows-latest`, gera o
+instalador NSIS, monta o zip portátil, calcula os SHA-256 em `checksums.txt` e
+cria a release com os três anexados. Leva uns quinze minutos.
+
+    gh run watch
+
+Publicar um instalador feito na sua máquina em vez do que o CI produziu quebra
+a correspondência com o `checksums.txt`, que continua sendo o do CI — quem
+conferir o hash vai concluir que o arquivo foi adulterado.
+
+O que sobra para você é escrever as notas da release depois que o CI terminar:
+
+    gh release edit vX.Y.Z --title "vX.Y.Z - Titulo" --notes-file notas.md
+
+Para compilar **localmente**, durante o desenvolvimento, o `tauri` não está
+instalado globalmente: o binário vive em `ui/node_modules`, e o comando roda da
+**raiz** do projeto, não de dentro de `ui/`.
 
     ./ui/node_modules/.bin/tauri build
-
-Isso roda `tsc --noEmit` e `vite build` antes de compilar o Rust em modo
-release. Leva alguns minutos. O instalador NSIS sai em
-`target/release/bundle/nsis/`.
-
-Tire o hash para as notas — é como quem baixa confere que o arquivo não foi
-adulterado:
-
-    sha256sum target/release/bundle/nsis/Vdesigner_X.Y.Z_x64-setup.exe
-
-E publique, anexando o instalador no mesmo comando:
-
-    gh release create vX.Y.Z target/release/bundle/nsis/Vdesigner_X.Y.Z_x64-setup.exe --title "vX.Y.Z - Titulo" --notes-file notas.md
-
-Sem o caminho do `.exe` ali, a release nasce sem instalador e ninguém consegue
-baixar nada.
 
 O instalador não é assinado. O SmartScreen do Windows vai avisar quem baixar,
 até que haja um certificado de assinatura de código. Vale dizer isso nas notas
