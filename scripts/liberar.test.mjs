@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { montarManifesto } from "./liberar.mjs";
+import { montarManifesto, selecionarInstalador } from "./liberar.mjs";
 
 const anexos = [{ name: "Vdesigner_2.1.0_x64-setup.exe" }, { name: "Vdesigner_2.1.0_x64-setup.exe.sig" }];
 const base = { tag: "v2.1.0", anexos, assinatura: "ASSINATURA", notas: "notas", agora: "2026-09-20T15:00:00Z" };
@@ -76,6 +76,61 @@ test("recusa quando o instalador não corresponde à versão da tag", () => {
   );
 });
 
+// Fix round 2, residual gap: the matcher used to accept -beta/-rc suffixes or
+// a version substring buried inside a longer name because "-" and "_" counted
+// as boundaries. Tauri's NSIS bundler only ever emits the exact filename
+// "Vdesigner_<versao>_x64-setup.exe", so anything else must be refused.
+test("recusa nomes parecidos mas não exatos (pre-release, substring, sufixo)", () => {
+  for (const nomeInstalador of [
+    "Vdesigner_2.1.0-beta_x64-setup.exe",
+    "Vdesigner_2.1.0-rc.1_x64-setup.exe",
+    "Vdesigner_3.0.0_base-2.1.0_x64-setup.exe",
+    "Vdesigner_2.1.0_x64-setup-old.exe",
+  ]) {
+    assert.throws(
+      () =>
+        montarManifesto({
+          ...base,
+          tag: "v2.1.0",
+          anexos: [{ name: nomeInstalador }, { name: `${nomeInstalador}.sig` }],
+        }),
+      /instalador/,
+      `deveria recusar: ${nomeInstalador}`
+    );
+  }
+});
+
+// Fix round 2: principal() downloads the .sig for whatever selecionarInstalador
+// picks, and montarManifesto (via the same function) builds the URL from it.
+// Before this fix the two call sites picked installers independently and could
+// disagree, shipping a manifest whose signature and URL named different
+// binaries. Pinning that selecionarInstalador is the one function both paths
+// call — and that it picks the version-matched asset even when a mismatched
+// one appears earlier in the array — is what keeps them from drifting apart
+// again.
+test("selecionarInstalador é a única autoridade e nunca diverge por ordem do array", () => {
+  const anexosComOrdemEnganosa = [
+    { name: "Vdesigner_9.9.9_x64-setup.exe" },
+    { name: "Vdesigner_9.9.9_x64-setup.exe.sig" },
+    { name: "Vdesigner_2.1.0_x64-setup.exe" },
+    { name: "Vdesigner_2.1.0_x64-setup.exe.sig" },
+  ];
+
+  const instalador = selecionarInstalador({ tag: "v2.1.0", anexos: anexosComOrdemEnganosa });
+  assert.equal(instalador.name, "Vdesigner_2.1.0_x64-setup.exe");
+
+  const m = montarManifesto({
+    tag: "v2.1.0",
+    anexos: anexosComOrdemEnganosa,
+    assinatura: "ASSINATURA-DA-2.1.0",
+    notas: "notas",
+    agora: "2026-09-20T15:00:00Z",
+  });
+  // The URL montarManifesto builds must name the same installer
+  // selecionarInstalador returned — not the first asset in the array.
+  assert.match(m.platforms["windows-x86_64"].url, /Vdesigner_2\.1\.0_x64-setup\.exe$/);
+});
+
 // Fix round 1, finding 3: a draft's assets aren't served from the public
 // download URL, so a draft manifest would 404 on every installed copy.
 test("recusa uma release que é rascunho (draft)", () => {
@@ -88,9 +143,11 @@ test("recusa uma release que é prerelease", () => {
   assert.throws(() => montarManifesto({ ...base, isPrerelease: true }), /prerelease/);
 });
 
-// Fix round 1, finding 4: more than one asset matching the installer pattern
-// for this version is ambiguous — refuse explicitly rather than picking the
-// first by array order.
+// Fix round 1, finding 4 (kept exact-name-aware in round 2): more than one
+// asset with the exact expected installer name is ambiguous — refuse
+// explicitly rather than silently picking the first by array order. An exact
+// name match makes duplicates practically unreachable in a real release, but
+// the guard is cheap and this pins that it still fires if that ever changes.
 test("recusa quando mais de um instalador corresponde à versão", () => {
   assert.throws(
     () =>
@@ -100,8 +157,7 @@ test("recusa quando mais de um instalador corresponde à versão", () => {
         anexos: [
           { name: "Vdesigner_2.1.0_x64-setup.exe" },
           { name: "Vdesigner_2.1.0_x64-setup.exe.sig" },
-          { name: "Vdesigner_2.1.0-beta_x64-setup.exe" },
-          { name: "Vdesigner_2.1.0-beta_x64-setup.exe.sig" },
+          { name: "Vdesigner_2.1.0_x64-setup.exe" },
         ],
       }),
     /mais de um|ambígu/
