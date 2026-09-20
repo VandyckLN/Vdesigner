@@ -60,3 +60,50 @@ test("recusa quando o .sig presente não corresponde ao instalador", () => {
     /assinatura/
   );
 });
+
+// Fix round 1, finding 2: the installer's filename must name the version
+// being promoted. Without this, a stale binary left over from another tag
+// gets shipped under a tag it does not match, with a valid signature attached.
+test("recusa quando o instalador não corresponde à versão da tag", () => {
+  assert.throws(
+    () =>
+      montarManifesto({
+        ...base,
+        tag: "v2.1.0",
+        anexos: [{ name: "Vdesigner_9.9.9_x64-setup.exe" }, { name: "Vdesigner_9.9.9_x64-setup.exe.sig" }],
+      }),
+    /instalador/
+  );
+});
+
+// Fix round 1, finding 3: a draft's assets aren't served from the public
+// download URL, so a draft manifest would 404 on every installed copy.
+test("recusa uma release que é rascunho (draft)", () => {
+  assert.throws(() => montarManifesto({ ...base, isDraft: true }), /rascunho|draft/);
+});
+
+// Fix round 1, finding 3: a prerelease tagged like a normal release must not
+// reach stable users just because its tag looks like vX.Y.Z.
+test("recusa uma release que é prerelease", () => {
+  assert.throws(() => montarManifesto({ ...base, isPrerelease: true }), /prerelease/);
+});
+
+// Fix round 1, finding 4: more than one asset matching the installer pattern
+// for this version is ambiguous — refuse explicitly rather than picking the
+// first by array order.
+test("recusa quando mais de um instalador corresponde à versão", () => {
+  assert.throws(
+    () =>
+      montarManifesto({
+        ...base,
+        tag: "v2.1.0",
+        anexos: [
+          { name: "Vdesigner_2.1.0_x64-setup.exe" },
+          { name: "Vdesigner_2.1.0_x64-setup.exe.sig" },
+          { name: "Vdesigner_2.1.0-beta_x64-setup.exe" },
+          { name: "Vdesigner_2.1.0-beta_x64-setup.exe.sig" },
+        ],
+      }),
+    /mais de um|ambígu/
+  );
+});

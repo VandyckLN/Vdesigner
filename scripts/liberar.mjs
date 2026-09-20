@@ -22,12 +22,37 @@ function menorQue(a, b) {
   return false;
 }
 
-export function montarManifesto({ tag, anexos, assinatura, notas, agora, jaLiberada }) {
+// Escapes regex metacharacters in a version string before splicing it into a
+// pattern (defensive: versao is already validated as \d+\.\d+\.\d+, but this
+// keeps the installer-matching regex correct even if that validation moves).
+function escaparRegex(texto) {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function montarManifesto({ tag, anexos, assinatura, notas, agora, jaLiberada, isDraft, isPrerelease }) {
   if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error(`tag fora do formato vX.Y.Z: ${tag}`);
   const versao = tag.slice(1);
 
-  const instalador = anexos.find((a) => /_x64-setup\.exe$/.test(a.name));
-  if (!instalador) throw new Error(`a release ${tag} não tem instalador anexado`);
+  // A draft's assets are not served from the public download URL at all, and
+  // a prerelease tagged like a normal release must not reach stable users —
+  // both are refused here, in the pure function, so no caller can skip them.
+  if (isDraft) throw new Error(`a release ${tag} é um rascunho (draft); publique-a antes de liberar`);
+  if (isPrerelease) throw new Error(`a release ${tag} é uma prerelease; não pode ser liberada como estável`);
+
+  // The installer's filename must itself name the version being promoted —
+  // otherwise a stale or mismatched binary (e.g. left over from another tag)
+  // gets shipped under the wrong version number, with a valid signature.
+  const candidatos = anexos.filter(
+    (a) => /_x64-setup\.exe$/.test(a.name) && new RegExp(`(^|[_-])${escaparRegex(versao)}([_-]|$)`).test(a.name)
+  );
+  if (candidatos.length === 0) throw new Error(`a release ${tag} não tem instalador anexado para a versão ${versao}`);
+  if (candidatos.length > 1) {
+    throw new Error(
+      `a release ${tag} tem mais de um instalador correspondente à versão ${versao}; ambíguo, recusando`
+    );
+  }
+  const instalador = candidatos[0];
+
   if (!anexos.some((a) => a.name === `${instalador.name}.sig`)) {
     throw new Error(`a release ${tag} não tem assinatura (.sig) anexada`);
   }
@@ -58,7 +83,11 @@ function principal() {
   const tag = process.argv[2];
   if (!tag) throw new Error("uso: npm run liberar -- vX.Y.Z");
 
-  const release = JSON.parse(gh(["release", "view", tag, "-R", REPO, "--json", "assets,body"]));
+  const release = JSON.parse(
+    gh(["release", "view", tag, "-R", REPO, "--json", "assets,body,isDraft,isPrerelease"])
+  );
+  // Only used here to know which .sig to download; montarManifesto repeats
+  // and enforces the real installer selection (version match, no ambiguity).
   const instalador = release.assets.find((a) => /_x64-setup\.exe$/.test(a.name));
   if (!instalador) throw new Error(`a release ${tag} não tem instalador anexado`);
 
@@ -74,6 +103,8 @@ function principal() {
     notas: release.body?.split("\n")[0] ?? `Versão ${tag.slice(1)}.`,
     agora: new Date().toISOString(),
     jaLiberada: atual.version,
+    isDraft: release.isDraft,
+    isPrerelease: release.isPrerelease,
   });
 
   writeFileSync(MANIFESTO, `${JSON.stringify(manifesto, null, 2)}\n`);
