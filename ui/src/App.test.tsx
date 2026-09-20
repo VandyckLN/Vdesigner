@@ -6,6 +6,15 @@ import { api } from "./api";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn().mockResolvedValue(null) }));
 vi.mock("@tauri-apps/plugin-clipboard-manager", () => ({ writeText: vi.fn() }));
+// App now mounts UpdateBanner and About, both of which reach into ./update,
+// which in turn calls the Tauri updater plugin — unavailable under jsdom.
+// Dubbing it here keeps the startup check a no-op so it resolves to nothing.
+vi.mock("./update", () => ({
+  procurarAtualizacao: () => Promise.resolve(null),
+  checagemAutomaticaLigada: () => false,
+  definirChecagemAutomatica: () => {},
+}));
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: () => Promise.resolve("0.0.0") }));
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -48,5 +57,12 @@ describe("App", () => {
     await userEvent.keyboard("{Home}");
     expect(imagemTab).toHaveAttribute("aria-selected", "true");
     expect(imagemTab).toHaveFocus();
+  });
+
+  it("mantém o painel Sobre montado e escondido quando não é a aba ativa", () => {
+    render(<App />);
+    const painel = document.getElementById("panel-sobre");
+    expect(painel).not.toBeNull();
+    expect(painel).toHaveAttribute("hidden");
   });
 });

@@ -3,6 +3,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Sidebar, panelId, tabId, type Screen } from "./components/Sidebar";
 import { Colors } from "./screens/Colors";
 import { Editor } from "./screens/Editor";
+import { About } from "./screens/About";
+import { UpdateBanner } from "./components/UpdateBanner";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "tif", "svg"];
 
@@ -24,10 +26,11 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <UpdateBanner />
       <Sidebar current={screen} onChange={setScreen} />
-      {/* Both panels stay mounted and the inactive one carries `hidden`,
+      {/* All panels stay mounted and the inactive ones carry `hidden`,
           because a tab's aria-controls must point at an element that exists:
-          with only the active screen rendered, the inactive tab referenced a
+          with only the active screen rendered, an inactive tab referenced a
           missing id, which is invalid per WAI-ARIA. `hidden` keeps it out of
           the accessibility tree and off the screen just the same. */}
       <div role="tabpanel" id={panelId("imagem")} aria-labelledby={tabId("imagem")} hidden={screen !== "imagem"}>
@@ -35,6 +38,9 @@ export function App() {
       </div>
       <div role="tabpanel" id={panelId("cores")} aria-labelledby={tabId("cores")} hidden={screen !== "cores"}>
         <Colors onPickDirectory={pickDirectory} />
+      </div>
+      <div role="tabpanel" id={panelId("sobre")} aria-labelledby={tabId("sobre")} hidden={screen !== "sobre"}>
+        <About />
       </div>
     </div>
   );
