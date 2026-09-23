@@ -1,0 +1,24 @@
+[workspace]
+members = ["crates/core", "src-tauri"]
+resolver = "2"
+
+[workspace.package]
+version = "2.2.0"
+authors = ["Vandyck (VandyckLN) <https://github.com/VandyckLN>"]
+repository = "https://github.com/VandyckLN/Vdesigner"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+
+[workspace.dependencies]
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp", "ico"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+webp = "0.3"
+ravif = "0.11"
+rgb = "0.8"
+fast_image_resize = { version = "5", features = ["image"] }
+# Default features pull in `image/default`, which would undo the trimmed
+# feature list above and drag in a second, duplicated AVIF encoder.
+imageproc = { version = "0.25", default-features = false, features = ["rayon"] }
+resvg = "0.45"
