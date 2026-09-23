@@ -20,6 +20,7 @@ vi.mock("./update", () => ({
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: () => Promise.resolve("0.0.0") }));
 
 let aoAtalhoIndisponivel: ((atalho: string) => void) | null = null;
+let aoFalharCaptura: ((mensagem: string) => void) | null = null;
 function emitirAtalhoIndisponivel(atalho: string) {
   aoAtalhoIndisponivel?.(atalho);
 }
@@ -29,6 +30,11 @@ beforeEach(() => {
   aoAtalhoIndisponivel = null;
   vi.spyOn(api, "onShortcutUnavailable").mockImplementation((handler) => {
     aoAtalhoIndisponivel = handler;
+    return Promise.resolve(() => {});
+  });
+  aoFalharCaptura = null;
+  vi.spyOn(api, "onPickFailed").mockImplementation((handler) => {
+    aoFalharCaptura = handler;
     return Promise.resolve(() => {});
   });
   vi.spyOn(api, "onColorPicked").mockResolvedValue(() => {});
@@ -105,5 +111,10 @@ describe("App", () => {
     emitirAtalhoIndisponivel("Ctrl+Alt+C");
     expect(await screen.findByRole("alert")).toHaveTextContent("Ctrl+Alt+C");
   });
-});
 
+  it("avisa quando a captura pelo atalho falha", async () => {
+    render(<App />);
+    aoFalharCaptura?.("não há monitores");
+    expect(await screen.findByRole("alert")).toHaveTextContent("não há monitores");
+  });
+});

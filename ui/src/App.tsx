@@ -12,10 +12,22 @@ const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "t
 export function App() {
   const [screen, setScreen] = useState<Screen>("imagem");
   const [atalhoIndisponivel, setAtalhoIndisponivel] = useState<string | null>(null);
+  const [falhaNaCaptura, setFalhaNaCaptura] = useState<string | null>(null);
 
   useEffect(() => {
     let parar: (() => void) | undefined;
     void api.onShortcutUnavailable((atalho) => setAtalhoIndisponivel(atalho)).then((f) => {
+      parar = f;
+    });
+    return () => parar?.();
+  }, []);
+
+  // O botão mostra o próprio erro; o atalho não tem quem receba a falha,
+  // então ela chega por evento. Sem isso, apertar o atalho e nada acontecer
+  // era tudo que a pessoa via.
+  useEffect(() => {
+    let parar: (() => void) | undefined;
+    void api.onPickFailed((mensagem) => setFalhaNaCaptura(mensagem)).then((f) => {
       parar = f;
     });
     return () => parar?.();
@@ -40,6 +52,11 @@ export function App() {
         <p className="shortcut-warning" role="alert">
           O atalho {atalhoIndisponivel} já está em uso por outro programa. Use o botão
           “Capturar cor” na tela de Cores.
+        </p>
+      )}
+      {falhaNaCaptura && (
+        <p className="shortcut-warning" role="alert">
+          Não foi possível capturar a cor: {falhaNaCaptura}
         </p>
       )}
       <UpdateBanner />

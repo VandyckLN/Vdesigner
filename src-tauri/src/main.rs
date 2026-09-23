@@ -54,7 +54,18 @@ fn main() {
                         }
                         if let Some(picker) = main_handle.try_state::<vdesigner::picker::Picker>() {
                             picker.disarm();
-                            let _ = vdesigner::commands::start_pick(main_handle.clone(), picker);
+                            // The button path shows its own error; the shortcut has
+                            // no caller to return one to, so a failure here must be
+                            // sent to the main window or the person just sees nothing.
+                            if let Err(mensagem) =
+                                vdesigner::commands::start_pick(main_handle.clone(), picker)
+                            {
+                                let _ = main_handle.emit_to(
+                                    "main",
+                                    "pick-failed",
+                                    PickFailed { mensagem },
+                                );
+                            }
                         }
                     });
                 })
@@ -101,4 +112,9 @@ fn main() {
 #[derive(Clone, serde::Serialize)]
 struct ShortcutUnavailable {
     atalho: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct PickFailed {
+    mensagem: String,
 }

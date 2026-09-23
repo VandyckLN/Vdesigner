@@ -68,33 +68,32 @@ impl Picker {
     }
 
     /// Virtual physical coordinates, same space as `origin_x`/`origin_y`.
-    ///
-    /// This is the low-level building block for resolving pixels on the snapshot.
     pub fn resolve(&self, vx: i32, vy: i32) -> Result<String, PickerError> {
         let slot = self.snapshot.lock().unwrap_or_else(|e| e.into_inner());
         let (snapshot, _) = slot.as_ref().ok_or(PickerError::NotArmed)?;
-        let color = snapshot.pixel_at(vx, vy)?;
-        Ok(format(color, ColorFormat::Hex))
+        hex_at(snapshot, vx, vy)
     }
 
     /// Resolves a point as the overlay's webview reports it — CSS pixels
     /// from the overlay window's top-left corner — together with the overlay
     /// window's DPI factor. The conversion itself lives in `screen.rs`; this
-    /// only supplies the snapshot's origin, which the overlay does not know,
-    /// and delegates the pixel lookup to [`Self::resolve`].
+    /// only supplies the snapshot's origin, which the overlay does not know.
+    ///
+    /// The lock is held from reading the origin to reading the pixel. Taking
+    /// it twice left a window in which a new `arm` could swap the snapshot,
+    /// so the origin of one picture would be applied to the pixels of
+    /// another.
     pub fn resolve_overlay_point(
         &self,
         css_x: f64,
         css_y: f64,
         scale: f64,
     ) -> Result<String, PickerError> {
-        let (origin_x, origin_y) = {
-            let slot = self.snapshot.lock().unwrap_or_else(|e| e.into_inner());
-            let (snapshot, _) = slot.as_ref().ok_or(PickerError::NotArmed)?;
-            (snapshot.origin_x, snapshot.origin_y)
-        };
-        let (vx, vy) = overlay_point_to_snapshot(origin_x, origin_y, css_x, css_y, scale)?;
-        self.resolve(vx, vy)
+        let slot = self.snapshot.lock().unwrap_or_else(|e| e.into_inner());
+        let (snapshot, _) = slot.as_ref().ok_or(PickerError::NotArmed)?;
+        let (vx, vy) =
+            overlay_point_to_snapshot(snapshot.origin_x, snapshot.origin_y, css_x, css_y, scale)?;
+        hex_at(snapshot, vx, vy)
     }
 
     /// Drops the snapshot. A two-monitor 4K picture is tens of megabytes;
@@ -104,4 +103,9 @@ impl Picker {
         let mut slot = self.snapshot.lock().unwrap_or_else(|e| e.into_inner());
         *slot = None;
     }
+}
+
+fn hex_at(snapshot: &Snapshot, vx: i32, vy: i32) -> Result<String, PickerError> {
+    let color = snapshot.pixel_at(vx, vy)?;
+    Ok(format(color, ColorFormat::Hex))
 }

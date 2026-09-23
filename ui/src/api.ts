@@ -171,6 +171,7 @@ export interface OverlayGeometry {
 
 const COLOR_PICKED_EVENT = "color-picked";
 const SHORTCUT_UNAVAILABLE_EVENT = "shortcut-unavailable";
+const PICK_FAILED_EVENT = "pick-failed";
 
 export const api = {
   openImage: (path: string) => invoke<ImageInfo>("open_image", { path }),
@@ -193,5 +194,7 @@ export const api = {
     listen<{ hex: string }>(COLOR_PICKED_EVENT, (event) => handler(event.payload.hex)),
   onShortcutUnavailable: (handler: (atalho: string) => void): Promise<UnlistenFn> =>
     listen<{ atalho: string }>(SHORTCUT_UNAVAILABLE_EVENT, (event) => handler(event.payload.atalho)),
+  onPickFailed: (handler: (mensagem: string) => void): Promise<UnlistenFn> =>
+    listen<{ mensagem: string }>(PICK_FAILED_EVENT, (event) => handler(event.payload.mensagem)),
   gradientCss: (palette: Palette, nome: string) => invoke<string>("gradient_css", { palette, nome }),
 };
