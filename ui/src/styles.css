@@ -420,3 +420,26 @@ body {
 
 .about-toggle { display: flex; align-items: center; gap: 6px; color: var(--ink); font-size: 12px; }
 .about-note { color: var(--dim); font-size: 11px; margin: 0; max-width: 46ch; }
+
+/* Filete de 1 px e acento como estado, nunca como preenchimento — mesmo
+   tratamento da faixa de atualização. */
+.shortcut-warning {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 6px var(--step);
+  border-bottom: 1px solid var(--rule);
+  border-left: 1px solid var(--accent);
+  color: var(--ink);
+  background: var(--bg-2);
+  font-size: 12px;
+}
+
+.captured-list { display: flex; flex-wrap: wrap; gap: var(--step); list-style: none; margin: 0; padding: 0; }
+.captured-list li { display: flex; align-items: center; gap: 6px; border: 1px solid var(--rule); padding: 4px 6px; }
+
+.gradient-list { list-style: none; margin: 0; padding: 0; }
+.gradient-list li { display: flex; align-items: center; gap: var(--step); border-top: 1px solid var(--rule); padding: 6px 0; }
+.gradient-name { color: var(--ink); font-size: 12px; }
+
+
+

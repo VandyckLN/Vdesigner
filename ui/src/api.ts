@@ -152,6 +152,26 @@ export const RAMP_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as c
  *  out inline where a bump on the Rust side would silently leave it behind. */
 export const PALETTE_FORMAT_VERSION = 1;
 
+export interface MonitorInfo {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scale: number;
+}
+
+export interface OverlayGeometry {
+  origin_x: number;
+  origin_y: number;
+  width: number;
+  height: number;
+  png_base64: string;
+  monitors: MonitorInfo[];
+}
+
+const COLOR_PICKED_EVENT = "color-picked";
+const SHORTCUT_UNAVAILABLE_EVENT = "shortcut-unavailable";
+
 export const api = {
   openImage: (path: string) => invoke<ImageInfo>("open_image", { path }),
   preview: (job: Job) => invoke<PreviewResult>("preview", { job }),
@@ -166,4 +186,12 @@ export const api = {
   colorVariations: (hex: string) => invoke<Variations>("color_variations", { hex }),
   formatColor: (hex: string, format: ColorFormat) =>
     invoke<string>("format_color", { hex, format }),
+  startPick: () => invoke<OverlayGeometry>("start_pick"),
+  pickAt: (x: number, y: number) => invoke<string>("pick_at", { x, y }),
+  cancelPick: () => invoke<void>("cancel_pick"),
+  onColorPicked: (handler: (hex: string) => void): Promise<UnlistenFn> =>
+    listen<{ hex: string }>(COLOR_PICKED_EVENT, (event) => handler(event.payload.hex)),
+  onShortcutUnavailable: (handler: (atalho: string) => void): Promise<UnlistenFn> =>
+    listen<{ atalho: string }>(SHORTCUT_UNAVAILABLE_EVENT, (event) => handler(event.payload.atalho)),
+  gradientCss: (palette: Palette, nome: string) => invoke<string>("gradient_css", { palette, nome }),
 };

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { api } from "./api";
 import { Sidebar, panelId, tabId, type Screen } from "./components/Sidebar";
 import { Colors } from "./screens/Colors";
 import { Editor } from "./screens/Editor";
@@ -10,6 +11,15 @@ const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "t
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("imagem");
+  const [atalhoIndisponivel, setAtalhoIndisponivel] = useState<string | null>(null);
+
+  useEffect(() => {
+    let parar: (() => void) | undefined;
+    void api.onShortcutUnavailable((atalho) => setAtalhoIndisponivel(atalho)).then((f) => {
+      parar = f;
+    });
+    return () => parar?.();
+  }, []);
 
   const pickFile = async () => {
     const selected = await open({
@@ -26,6 +36,12 @@ export function App() {
 
   return (
     <div className="app-shell">
+      {atalhoIndisponivel && (
+        <p className="shortcut-warning" role="alert">
+          O atalho {atalhoIndisponivel} já está em uso por outro programa. Use o botão
+          “Capturar cor” na tela de Cores.
+        </p>
+      )}
       <UpdateBanner />
       <Sidebar current={screen} onChange={setScreen} />
       {/* All panels stay mounted and the inactive ones carry `hidden`,

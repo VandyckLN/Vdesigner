@@ -19,8 +19,19 @@ vi.mock("./update", () => ({
 }));
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: () => Promise.resolve("0.0.0") }));
 
+let aoAtalhoIndisponivel: ((atalho: string) => void) | null = null;
+function emitirAtalhoIndisponivel(atalho: string) {
+  aoAtalhoIndisponivel?.(atalho);
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
+  aoAtalhoIndisponivel = null;
+  vi.spyOn(api, "onShortcutUnavailable").mockImplementation((handler) => {
+    aoAtalhoIndisponivel = handler;
+    return Promise.resolve(() => {});
+  });
+  vi.spyOn(api, "onColorPicked").mockResolvedValue(() => {});
   vi.spyOn(api, "loadPalette").mockResolvedValue(null);
   vi.spyOn(api, "colorVariations").mockResolvedValue({
     ramp: ["#000", "#000", "#000", "#000", "#000", "#000", "#000", "#000", "#000", "#000"],
@@ -88,4 +99,11 @@ describe("App", () => {
     const shell = faixa.closest(".app-shell");
     expect(shell?.firstElementChild).toBe(faixa);
   });
+
+  it("avisa quando o atalho global já está tomado por outro programa", async () => {
+    render(<App />);
+    emitirAtalhoIndisponivel("Ctrl+Alt+C");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ctrl+Alt+C");
+  });
 });
+

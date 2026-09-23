@@ -1,6 +1,6 @@
 use vdesigner_core::{
-    palette_from_json, palette_to_json, validate_palette, CoreError, Generated, GradientRef,
-    Palette, Swatch, PALETTE_FORMAT_VERSION,
+    gradient_css, palette_from_json, palette_to_json, validate_palette, CoreError, Generated,
+    GradientRef, Palette, Swatch, PALETTE_FORMAT_VERSION,
 };
 
 fn sample() -> Palette {
@@ -238,4 +238,63 @@ fn the_tailwind_fragment_is_valid_json_keyed_by_colour_name() {
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(parsed["tinta"], "#EDE8DE");
     assert_eq!(parsed["acento"]["500"], "#8A9096");
+}
+
+#[test]
+fn it_builds_the_same_gradient_css_the_stylesheet_uses() {
+    let palette = Palette {
+        versao: PALETTE_FORMAT_VERSION,
+        nome: "teste".to_string(),
+        gerar: vec![Generated::Css],
+        cores: vec![
+            Swatch {
+                nome: "tinta".to_string(),
+                hex: "#ede8de".to_string(),
+                rampa: false,
+            },
+            Swatch {
+                nome: "acento".to_string(),
+                hex: "#8a9096".to_string(),
+                rampa: false,
+            },
+        ],
+        degrades: vec![GradientRef {
+            nome: "fundo".to_string(),
+            de: "tinta".to_string(),
+            para: "acento".to_string(),
+        }],
+    };
+
+    let css = gradient_css(&palette, &palette.degrades[0]).expect("deve montar o degradê");
+    assert!(css.starts_with("linear-gradient(90deg, #"), "saiu: {css}");
+
+    let folha = to_css_vars(&palette).expect("deve montar a folha");
+    assert!(
+        folha.contains(&std::format!("  --fundo: {css};")),
+        "o botão Copiar e o cores.css precisam produzir exatamente a mesma string"
+    );
+}
+
+#[test]
+fn it_refuses_a_gradient_pointing_at_a_colour_that_does_not_exist() {
+    let palette = Palette {
+        versao: PALETTE_FORMAT_VERSION,
+        nome: "teste".to_string(),
+        gerar: vec![],
+        cores: vec![Swatch {
+            nome: "tinta".to_string(),
+            hex: "#ede8de".to_string(),
+            rampa: false,
+        }],
+        degrades: vec![],
+    };
+    let referencia = GradientRef {
+        nome: "fundo".to_string(),
+        de: "tinta".to_string(),
+        para: "fantasma".to_string(),
+    };
+    assert!(
+        gradient_css(&palette, &referencia).is_err(),
+        "um degradê apontando para cor inexistente deve falhar antes de gerar CSS"
+    );
 }

@@ -24,8 +24,26 @@ function hexToRgb(hex: string): string {
   return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
 }
 
+let aoCorCapturada: ((hex: string) => void) | null = null;
+function emitirCorCapturada(hex: string) {
+  aoCorCapturada?.(hex);
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
+  aoCorCapturada = null;
+  vi.spyOn(api, "onColorPicked").mockImplementation((handler) => {
+    aoCorCapturada = handler;
+    return Promise.resolve(() => {});
+  });
+  vi.spyOn(api, "startPick").mockResolvedValue({
+    origin_x: 0,
+    origin_y: 0,
+    width: 1920,
+    height: 1080,
+    png_base64: "",
+    monitors: [],
+  });
   vi.spyOn(api, "colorVariations").mockResolvedValue(variations);
   vi.spyOn(api, "formatColor").mockResolvedValue("rgb(138, 144, 150)");
   vi.spyOn(api, "loadPalette").mockResolvedValue(null);
@@ -85,7 +103,7 @@ describe("Colors", () => {
     await userEvent.click(screen.getByRole("button", { name: /escolher pasta/i }));
     await userEvent.type(screen.getByLabelText(/cor em hex/i), "#8A9096");
     await userEvent.type(screen.getByLabelText(/nome da cor/i), "Cor Principal");
-    await userEvent.click(screen.getByRole("button", { name: /adicionar/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^adicionar$/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/minúsculas/i);
     expect(api.savePalette).not.toHaveBeenCalled();
@@ -99,7 +117,7 @@ describe("Colors", () => {
     await userEvent.click(screen.getByRole("button", { name: /escolher pasta/i }));
     await userEvent.type(screen.getByLabelText(/cor em hex/i), "#8A9096");
     await userEvent.type(screen.getByLabelText(/nome da cor/i), "acento");
-    await userEvent.click(screen.getByRole("button", { name: /adicionar/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^adicionar$/i }));
 
     await waitFor(() => {
       expect(api.savePalette).toHaveBeenCalledWith(
@@ -339,4 +357,136 @@ describe("Colors", () => {
     expect(screen.getByText("Análoga 1")).toBeInTheDocument();
     expect(screen.getByText("Tríade 1")).toBeInTheDocument();
   });
+
+  it("mostra a cor capturada na faixa e a copia para a área de transferência", async () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    emitirCorCapturada("#3366ff");
+    expect(await screen.findByText("#3366ff")).toBeInTheDocument();
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("#3366ff"));
+  });
+
+  it("não grava a cor capturada na paleta sozinha", async () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    emitirCorCapturada("#3366ff");
+    await screen.findByText("#3366ff");
+    expect(api.savePalette).not.toHaveBeenCalled();
+  });
+
+  it("promove uma cor capturada para a paleta com nome", async () => {
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: "Escolher pasta" }));
+    emitirCorCapturada("#3366ff");
+    await userEvent.click(await screen.findByRole("button", { name: "Usar a cor #3366ff" }));
+    await userEvent.type(screen.getByLabelText("Nome da cor"), "marca");
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar" }));
+    await waitFor(() => expect(api.savePalette).toHaveBeenCalled());
+    const [, paleta] = vi.mocked(api.savePalette).mock.calls[0];
+    expect(paleta.cores).toContainEqual({ nome: "marca", hex: "#3366ff", rampa: false });
+  });
+
+  it("dispara a captura pelo botão", async () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.click(screen.getByRole("button", { name: "Capturar cor" }));
+    expect(api.startPick).toHaveBeenCalledTimes(1);
+  });
+
+  it("mostra alerta quando a captura falha ao clicar em Capturar cor", async () => {
+    vi.spyOn(api, "startPick").mockRejectedValue(new Error("nenhum monitor foi encontrado"));
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.click(screen.getByRole("button", { name: "Capturar cor" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível capturar a tela");
+  });
+
+  it("cria um degradê entre duas cores da paleta", async () => {
+    vi.spyOn(api, "loadPalette").mockResolvedValue({
+      palette: {
+        versao: 1,
+        nome: "paleta",
+        gerar: ["css"],
+        cores: [
+          { nome: "tinta", hex: "#ede8de", rampa: false },
+          { nome: "acento", hex: "#8a9096", rampa: false },
+        ],
+        degrades: [],
+      },
+      on_disk: "{}",
+    });
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: "Escolher pasta" }));
+    await userEvent.type(await screen.findByLabelText("Nome do degradê"), "fundo");
+    await userEvent.selectOptions(screen.getByLabelText("De"), "tinta");
+    await userEvent.selectOptions(screen.getByLabelText("Para"), "acento");
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar degradê" }));
+    await waitFor(() => expect(api.savePalette).toHaveBeenCalled());
+    const [, paleta] = vi.mocked(api.savePalette).mock.calls.at(-1)!;
+    expect(paleta.degrades).toContainEqual({ nome: "fundo", de: "tinta", para: "acento" });
+  });
+
+  it("recusa um degradê sem as duas pontas escolhidas", async () => {
+    vi.spyOn(api, "loadPalette").mockResolvedValue({
+      palette: {
+        versao: 1,
+        nome: "paleta",
+        gerar: ["css"],
+        cores: [{ nome: "tinta", hex: "#ede8de", rampa: false }],
+        degrades: [],
+      },
+      on_disk: "{}",
+    });
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: "Escolher pasta" }));
+    await userEvent.type(await screen.findByLabelText("Nome do degradê"), "fundo");
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar degradê" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(api.savePalette).not.toHaveBeenCalled();
+  });
+
+  it("copia a regra CSS do degradê para a área de transferência", async () => {
+    vi.spyOn(api, "loadPalette").mockResolvedValue({
+      palette: {
+        versao: 1,
+        nome: "paleta",
+        gerar: ["css"],
+        cores: [
+          { nome: "tinta", hex: "#ede8de", rampa: false },
+          { nome: "acento", hex: "#8a9096", rampa: false },
+        ],
+        degrades: [{ nome: "fundo", de: "tinta", para: "acento" }],
+      },
+      on_disk: "{}",
+    });
+    vi.spyOn(api, "gradientCss").mockResolvedValue("linear-gradient(90deg, #ede8de, #8a9096)");
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: "Escolher pasta" }));
+    await screen.findByText("fundo");
+    await userEvent.click(screen.getByRole("button", { name: "Copiar o degradê fundo" }));
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith("linear-gradient(90deg, #ede8de, #8a9096)");
+    });
+  });
+
+  it("remove um degradê da paleta e salva a alteração", async () => {
+    vi.spyOn(api, "loadPalette").mockResolvedValue({
+      palette: {
+        versao: 1,
+        nome: "paleta",
+        gerar: ["css"],
+        cores: [
+          { nome: "tinta", hex: "#ede8de", rampa: false },
+          { nome: "acento", hex: "#8a9096", rampa: false },
+        ],
+        degrades: [{ nome: "fundo", de: "tinta", para: "acento" }],
+      },
+      on_disk: "{}",
+    });
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: "Escolher pasta" }));
+    await screen.findByText("fundo");
+    await userEvent.click(screen.getByRole("button", { name: "Remover o degradê fundo" }));
+    await waitFor(() => expect(api.savePalette).toHaveBeenCalled());
+    const [, paleta] = vi.mocked(api.savePalette).mock.calls.at(-1)!;
+    expect(paleta.degrades).toHaveLength(0);
+  });
 });
+
+

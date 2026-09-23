@@ -1,10 +1,12 @@
 use crate::export::{resolve_output_path, write_bytes};
 use crate::palette_io;
+use crate::picker::{self, OverlayGeometry, Picker};
+use crate::screen;
 use crate::session::{Session, SourceImage};
 use base64::Engine;
 use serde::Serialize;
 use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use vdesigner_core::{
     decode, format as format_color_value, harmonies, is_svg, parse_hex, ramp, rasterize_svg,
     run_job, run_preview, ColorFormat, EncodeSpec, Job, OutputFormat, Palette,
@@ -287,4 +289,133 @@ pub fn save_palette(
 ) -> CommandResult<String> {
     palette_io::save(std::path::Path::new(&dir), &palette, expected.as_deref())
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn gradient_css(palette: Palette, nome: String) -> CommandResult<String> {
+    let referencia = palette
+        .degrades
+        .iter()
+        .find(|d| d.nome == nome)
+        .ok_or_else(|| std::format!("não existe degradê chamado `{nome}` nesta paleta"))?;
+    vdesigner_core::gradient_css(&palette, referencia).map_err(|e| e.to_string())
+}
+
+/// Freezes the screen and opens the overlay. The order matters and is part of
+/// the design: the picture is taken *before* the overlay exists, otherwise the
+/// overlay ends up in the picture.
+///
+/// The overlay is placed and sized with the **physical** setters, using the
+/// snapshot's rectangle unchanged. That is correct rather than convenient:
+/// Tauri runs the process as per-monitor-v2 DPI aware, so its physical space
+/// is the same unscaled space `screen.rs` documents. The builder's
+/// `position`/`inner_size` take *logical* pixels and would shrink the
+/// overlay by the DPI factor on any scaled display, which is why they are
+/// not used here. See the coordinate-space note in `screen.rs`.
+///
+/// The window is built hidden and shown only once it has been moved and
+/// resized, so a scaled display never flashes a wrongly placed overlay.
+#[tauri::command]
+pub fn start_pick(app: tauri::AppHandle, picker: State<Picker>) -> CommandResult<OverlayGeometry> {
+    // If the overlay window is already open and the picker is already armed,
+    // this call is the overlay window fetching its geometry on mount.
+    // Return the active geometry without re-capturing or recreating windows.
+    if app.get_webview_window(picker::OVERLAY_LABEL).is_some() {
+        if let Some(geometry) = picker.current_geometry() {
+            return Ok(geometry);
+        }
+    }
+
+    // Reusing an overlay left over from a previous pick would show a stale
+    // picture of the screen, and letting it stay open while capturing would
+    // freeze the old overlay into the new snapshot.
+    if let Some(existing) = app.get_webview_window(picker::OVERLAY_LABEL) {
+        let _ = existing.hide();
+        let _ = existing.close();
+    }
+
+    let snapshot = screen::capture_all_monitors().map_err(|e| e.to_string())?;
+    let geometry = picker.arm(snapshot).map_err(|e| e.to_string())?;
+
+    let window = tauri::WebviewWindowBuilder::new(
+        &app,
+        picker::OVERLAY_LABEL,
+        tauri::WebviewUrl::App("index.html".into()),
+    )
+    .title("Conta-gotas")
+    .decorations(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .resizable(false)
+    .visible(false)
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    window
+        .set_position(tauri::PhysicalPosition::new(
+            geometry.origin_x,
+            geometry.origin_y,
+        ))
+        .map_err(|e| e.to_string())?;
+    window
+        .set_size(tauri::PhysicalSize::new(geometry.width, geometry.height))
+        .map_err(|e| e.to_string())?;
+    window.show().map_err(|e| e.to_string())?;
+
+    // Without focus the overlay receives no key events, so Esc and the arrow
+    // keys would not work.
+    let _ = window.set_focus();
+
+    Ok(geometry)
+}
+
+/// Resolves a click on the overlay.
+///
+/// **Contract for the overlay window:** send `x` and `y` as CSS pixels
+/// measured from the overlay window's own top-left corner — `event.clientX`
+/// and `event.clientY` are exactly that. Do **not** multiply by
+/// `devicePixelRatio`, do not add any window or screen offset, and do not
+/// try to reach the snapshot's coordinate space yourself. This command asks
+/// the overlay window for its DPI factor and does the conversion through
+/// `screen::overlay_point_to_snapshot`, which is the one place in the
+/// project allowed to do it.
+#[tauri::command]
+pub fn pick_at(
+    app: tauri::AppHandle,
+    picker: State<Picker>,
+    x: f64,
+    y: f64,
+) -> CommandResult<String> {
+    // If the overlay is already gone the factor cannot be read; 1:1 is the
+    // honest fallback, and `pixel_at` still refuses anything out of bounds.
+    let scale = app
+        .get_webview_window(picker::OVERLAY_LABEL)
+        .and_then(|w| w.scale_factor().ok())
+        .unwrap_or(1.0);
+    let hex = picker
+        .resolve_overlay_point(x, y, scale)
+        .map_err(|e| e.to_string())?;
+    close_overlay(&app, &picker);
+    // The main window owns the clipboard and the captured strip; emitting
+    // keeps a single write path instead of a second one here.
+    app.emit_to("main", "color-picked", PickedColor { hex: hex.clone() })
+        .map_err(|e| e.to_string())?;
+    Ok(hex)
+}
+
+#[tauri::command]
+pub fn cancel_pick(app: tauri::AppHandle, picker: State<Picker>) {
+    close_overlay(&app, &picker);
+}
+
+fn close_overlay(app: &tauri::AppHandle, picker: &Picker) {
+    if let Some(window) = app.get_webview_window(picker::OVERLAY_LABEL) {
+        let _ = window.close();
+    }
+    picker.disarm();
+}
+
+#[derive(Clone, serde::Serialize)]
+pub struct PickedColor {
+    pub hex: String,
 }

@@ -172,11 +172,10 @@ pub fn to_css_vars(palette: &Palette) -> Result<String, CoreError> {
     }
 
     for reference in &palette.degrades {
-        let stops = gradient_stops(palette, reference)?;
         out.push_str(&std::format!(
-            "  --{}: linear-gradient(90deg, {});\n",
+            "  --{}: {};\n",
             reference.nome,
-            stops.join(", ")
+            gradient_css(palette, reference)?
         ));
     }
 
@@ -184,7 +183,10 @@ pub fn to_css_vars(palette: &Palette) -> Result<String, CoreError> {
     Ok(out)
 }
 
-fn gradient_stops(palette: &Palette, reference: &GradientRef) -> Result<Vec<String>, CoreError> {
+/// The `linear-gradient(...)` value for one gradient reference. Public because
+/// the UI's copy button needs exactly the string the stylesheet gets: two
+/// constructions of the same value drift apart on the first edit.
+pub fn gradient_css(palette: &Palette, reference: &GradientRef) -> Result<String, CoreError> {
     let find = |name: &str| {
         palette
             .cores
@@ -201,10 +203,12 @@ fn gradient_stops(palette: &Palette, reference: &GradientRef) -> Result<Vec<Stri
     let from = find(&reference.de)?.color()?;
     let to = find(&reference.para)?.color()?;
 
-    Ok(gradient(from, to, GRADIENT_STOPS)?
+    let stops: Vec<String> = gradient(from, to, GRADIENT_STOPS)?
         .into_iter()
         .map(|c| format(c, ColorFormat::Hex))
-        .collect())
+        .collect();
+
+    Ok(std::format!("linear-gradient(90deg, {})", stops.join(", ")))
 }
 
 pub fn to_tailwind(palette: &Palette) -> Result<String, CoreError> {

@@ -5,3 +5,6 @@
 /.superpowers/
 /.claude/
 /docs/superpowers/
+
+# Scratch de agentes de IA
+.agents/

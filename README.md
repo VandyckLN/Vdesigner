@@ -46,6 +46,12 @@ Vdesigner escreve `vdesigner-cores.json` (a paleta, para reabrir depois) e
 `cores.css` (as variáveis prontas para usar). Reabrir a mesma pasta traz a
 paleta salva de volta.
 
+**Capturar cor da tela.** `Ctrl+Alt+C` congela a tela, abre uma lupa e captura
+o pixel que você apontar — de qualquer programa, em qualquer monitor. A cor vai
+para a área de transferência na hora e fica numa faixa na tela de Cores, de
+onde você pode nomeá-la e gravá-la na paleta do projeto. As setas do teclado
+movem um pixel por vez; `Esc` cancela sem mexer na área de transferência.
+
 ## Formatos
 
 | Entrada | Saída |
@@ -60,7 +66,7 @@ paleta salva de volta.
 | Codificadores | `webp`, `ravif` (AVIF, com rotinas em assembly via NASM) |
 | Aplicação | Tauri 2 — janela nativa sobre o WebView2 do Windows |
 | Interface | React 18, TypeScript, Vite |
-| Testes | 225 no total — 131 em Rust (`cargo test`), 78 na interface (Vitest, Testing Library) e 16 nos scripts de release (`node:test`) |
+| Testes | 275 no total — 160 em Rust (`cargo test`), 99 na interface (Vitest, Testing Library) e 16 nos scripts de release (`node:test`) |
 | CI | GitHub Actions — `rustfmt`, `clippy` com avisos como erro, e as três suítes |
 
 O motor vive em `crates/core` e é uma biblioteca pura: não conhece Tauri, não
@@ -130,6 +136,15 @@ plataforma, e o Tauri suporta Linux e macOS — falta o trabalho de build e test
 
 O processamento é de uma imagem por vez. O motor já aceita lotes, porque um
 `Job` é só dado, mas a tela para isso ainda não existe.
+
+A captura de tela é só para Windows. O `screen.rs` é o único módulo preso à
+plataforma, e é ele que precisaria de uma implementação equivalente em Linux e
+macOS.
+
+O atalho vale enquanto o Vdesigner estiver aberto. Não há ícone de bandeja nem
+início com o Windows, e o atalho ainda não é configurável: se `Ctrl+Alt+C` já
+estiver tomado por outro programa, o app avisa e o botão “Capturar cor” na tela
+de Cores é a saída.
 
 ## Autoria
 

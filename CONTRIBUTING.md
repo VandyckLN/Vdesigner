@@ -22,7 +22,9 @@ O repositório é um workspace Cargo com dois crates e uma interface:
   Windows nem WebView. O teste `crates/core/tests/purity_test.rs` lê o manifesto
   do crate e falha se `tauri`, `windows`, `winapi` ou `wry` aparecerem nele.
 - `src-tauri` — a camada fina. Comandos, diálogos de arquivo, área de
-  transferência. Só amarra o motor à janela.
+  transferência. Só amarra o motor à janela. O `screen.rs` é o único lugar do
+  projeto que sabe o que é captura de tela; a conversão cursor → pixel com
+  escala de DPI mora ali e em nenhum outro lugar.
 - `ui` — React e TypeScript.
 
 A regra que decorre disso: **lógica vai em `crates/core`, nunca no código da
@@ -51,6 +53,9 @@ implementam `tablist` completo: setas, Home, End e tabindex móvel.
 - `cargo test --all`, `npm --prefix ui run test` e `npm run test:scripts` passando
 - teste cobrindo o comportamento novo, no mesmo estilo dos que já existem
 - lógica de imagem e de cor em `crates/core`
+- se mexer em `src-tauri/src/screen.rs`, `src-tauri/src/picker.rs` ou na
+  sobreposição, o roteiro de `docs/roteiro-manual-conta-gotas.md` executado, com
+  o resultado de cada item anotado no pull request
 
 Para trabalho grande, abra uma issue antes descrevendo o que pretende. Para
 mudança pequena, o pull request direto já serve.

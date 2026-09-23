@@ -53,6 +53,28 @@ export function Colors({
   const [dir, setDir] = useState<string | null>(null);
   const [onDisk, setOnDisk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [capturadas, setCapturadas] = useState<string[]>([]);
+  const [gradName, setGradName] = useState("");
+  const [gradFrom, setGradFrom] = useState("");
+  const [gradTo, setGradTo] = useState("");
+
+  // The captured colour always reaches the clipboard, because that is the
+  // whole point of the eyedropper: it never has to pass through the palette
+  // to be useful.
+  useEffect(() => {
+    let parar: (() => void) | undefined;
+    void api
+      .onColorPicked((capturada) => {
+        setCapturadas((anteriores) => [capturada, ...anteriores.filter((c) => c !== capturada)].slice(0, 12));
+        void Promise.resolve(writeText(capturada)).catch(() => {
+          setError("A cor foi capturada, mas não foi possível copiá-la.");
+        });
+      })
+      .then((f) => {
+        parar = f;
+      });
+    return () => parar?.();
+  }, []);
 
   const normalized = normalizeHex(hex);
 
@@ -121,6 +143,15 @@ export function Colors({
     }
   };
 
+  const startPick = async () => {
+    try {
+      await api.startPick();
+      setError(null);
+    } catch (e) {
+      setError(`Não foi possível capturar a tela: ${String(e)}`);
+    }
+  };
+
   /** Shared persistence so "Adicionar" and "Gravar" cannot drift apart: both
    *  end up calling the exact same save + snapshot-update path. */
   const persist = async (next: Palette): Promise<boolean> => {
@@ -173,6 +204,31 @@ export function Colors({
     await persist({ ...palette, cores: palette.cores.filter((_, i) => i !== index) });
   };
 
+  const addGradient = async () => {
+    if (!VALID_NAME.test(gradName)) {
+      setError("Use apenas letras minúsculas sem acento, números e hífen.");
+      return;
+    }
+    if (!gradFrom || !gradTo) {
+      setError("Escolha as duas cores do degradê.");
+      return;
+    }
+    const ok = await persist({
+      ...palette,
+      degrades: [...palette.degrades, { nome: gradName, de: gradFrom, para: gradTo }],
+    });
+    if (ok) setGradName("");
+  };
+
+  const copyGradient = async (nome: string) => {
+    try {
+      await writeText(await api.gradientCss(palette, nome));
+      setError(null);
+    } catch (e) {
+      setError(`Não foi possível copiar o degradê: ${String(e)}`);
+    }
+  };
+
   return (
     <main className="colors">
       <div className="colors-controls">
@@ -198,6 +254,10 @@ export function Colors({
 
         <button type="button" onClick={pickFolder}>
           Escolher pasta
+        </button>
+
+        <button type="button" onClick={() => void startPick()}>
+          Capturar cor
         </button>
 
         <label>
@@ -229,6 +289,28 @@ export function Colors({
         </p>
       )}
 
+      {capturadas.length > 0 && (
+        <section aria-labelledby="captured-heading">
+          <h2 id="captured-heading" className="mono">
+            Capturadas
+          </h2>
+          {/* Deliberately not written to the project file: the palette goes
+              into Git, and an accidental capture becoming a commit is litter
+              the whole team sees in the diff. Promoting is an explicit act. */}
+          <ul className="captured-list" aria-label="Cores capturadas">
+            {capturadas.map((capturada) => (
+              <li key={capturada}>
+                <span className="swatch-chip" style={{ background: capturada }} aria-hidden="true" />
+                <code>{capturada}</code>
+                <button type="button" onClick={() => setHex(capturada)} aria-label={`Usar a cor ${capturada}`}>
+                  Usar
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {dir && (
         <section aria-labelledby="palette-heading">
           <h2 id="palette-heading" className="mono">
@@ -251,6 +333,59 @@ export function Colors({
                     className="palette-remove"
                     onClick={() => remove(index)}
                     aria-label={`Remover a cor ${cor.nome}`}
+                  >
+                    Remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <h2 className="mono">Degradês</h2>
+          <div className="colors-controls">
+            <label>
+              Nome do degradê
+              <input value={gradName} onChange={(e) => setGradName(e.target.value)} placeholder="fundo" />
+            </label>
+            <label>
+              De
+              <select value={gradFrom} onChange={(e) => setGradFrom(e.target.value)}>
+                <option value="">—</option>
+                {palette.cores.map((cor) => (
+                  <option key={cor.nome} value={cor.nome}>{cor.nome}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Para
+              <select value={gradTo} onChange={(e) => setGradTo(e.target.value)}>
+                <option value="">—</option>
+                {palette.cores.map((cor) => (
+                  <option key={cor.nome} value={cor.nome}>{cor.nome}</option>
+                ))}
+              </select>
+            </label>
+            <button type="button" onClick={() => void addGradient()}>
+              Adicionar degradê
+            </button>
+          </div>
+          {palette.degrades.length > 0 && (
+            <ul className="gradient-list" aria-label="Degradês da paleta">
+              {palette.degrades.map((degrade) => (
+                <li key={degrade.nome}>
+                  <span className="gradient-name">{degrade.nome}</span>
+                  <code>{degrade.de} → {degrade.para}</code>
+                  <button
+                    type="button"
+                    onClick={() => void copyGradient(degrade.nome)}
+                    aria-label={`Copiar o degradê ${degrade.nome}`}
+                  >
+                    Copiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void persist({ ...palette, degrades: palette.degrades.filter((d) => d.nome !== degrade.nome) })}
+                    aria-label={`Remover o degradê ${degrade.nome}`}
                   >
                     Remover
                   </button>
