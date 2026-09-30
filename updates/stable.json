@@ -1,11 +1,11 @@
 {
-  "version": "2.2.0",
+  "version": "2.2.1",
   "notes": "",
-  "pub_date": "2026-09-23T14:53:21.836Z",
+  "pub_date": "2026-09-30T11:54:30.696Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeWJaNExtc2I3WWJmV2l1Ui9kMXBBWGlveGIrZ0JYVmFDb2R5Z1paai9vT25kcHFlTmI0WUViajlNYTFrbTNnbWdqd1dGOFJmRGpkdzlyZnVZc2VzRE0zbjVWSjhrZXdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwMTU2MTE4CWZpbGU6VmRlc2lnbmVyXzIuMi4wX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoyLjIuMAppRGtNOHV0VkZBWkp6TjZyV2ljSHRrT2NHZUVkT3JieU83YmtPREE0VUtRWVVQbHJ4Vi96eFkzcm94ODNTZFB2V1BiSkxabnlraUxMaDFRV0Z1aGhBUT09Cg==",
-      "url": "https://github.com/VandyckLN/Vdesigner/releases/download/v2.2.0/Vdesigner_2.2.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeWJaNExtc2I3WWVuRWRsdnM3dVpYT2JYRVliWGZrSGVmUGExN2VyVXJwREE0MUJ1WWZVcnNpZ0RNTm9Ga3pnT3l2MlNiOVh2bS8xaTdVc0o0Z2xDWTBSNi9SN1I3M0FFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwNzY5MjE0CWZpbGU6VmRlc2lnbmVyXzIuMi4xX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoyLjIuMQpvTHUvck43a3FnaXhOY0FrVmpXV3JrQXBUSlBjdGFqSFl3b1FjV1ZtY2VheGNMUnNKbG5wWU9zYWd6VCtzRTFIdENTcW1Ydi9CRmNTTFBtSFpZY0hEQT09Cg==",
+      "url": "https://github.com/VandyckLN/Vdesigner/releases/download/v2.2.1/Vdesigner_2.2.1_x64-setup.exe"
     }
   }
 }
