@@ -58,7 +58,7 @@ fn main() {
                             // no caller to return one to, so a failure here must be
                             // sent to the main window or the person just sees nothing.
                             if let Err(mensagem) =
-                                vdesigner::commands::start_pick(main_handle.clone(), picker)
+                                vdesigner::commands::open_picker(&main_handle, &picker)
                             {
                                 let _ = main_handle.emit_to(
                                     "main",

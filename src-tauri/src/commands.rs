@@ -315,8 +315,23 @@ pub fn gradient_css(palette: Palette, nome: String) -> CommandResult<String> {
 ///
 /// The window is built hidden and shown only once it has been moved and
 /// resized, so a scaled display never flashes a wrongly placed overlay.
+///
+/// `async` on purpose: Tauri runs a synchronous command on the main thread,
+/// and building a webview window from there deadlocks on Windows — the
+/// overlay opened blank and the whole app froze. An async command runs off the
+/// main thread, where window creation is dispatched safely.
 #[tauri::command]
-pub fn start_pick(app: tauri::AppHandle, picker: State<Picker>) -> CommandResult<OverlayGeometry> {
+pub async fn start_pick(
+    app: tauri::AppHandle,
+    picker: State<'_, Picker>,
+) -> CommandResult<OverlayGeometry> {
+    open_picker(&app, &picker)
+}
+
+/// The body of [`start_pick`], callable without the command wrapper. The
+/// global shortcut calls this from inside `run_on_main_thread`, which is
+/// already on the event loop and so does not hit the deadlock above.
+pub fn open_picker(app: &tauri::AppHandle, picker: &Picker) -> CommandResult<OverlayGeometry> {
     // If the overlay window is already open and the picker is already armed,
     // this call is the overlay window fetching its geometry on mount.
     // Return the active geometry without re-capturing or recreating windows.
@@ -338,7 +353,7 @@ pub fn start_pick(app: tauri::AppHandle, picker: State<Picker>) -> CommandResult
     let geometry = picker.arm(snapshot).map_err(|e| e.to_string())?;
 
     let window = tauri::WebviewWindowBuilder::new(
-        &app,
+        app,
         picker::OVERLAY_LABEL,
         tauri::WebviewUrl::App("index.html".into()),
     )
@@ -379,10 +394,11 @@ pub fn start_pick(app: tauri::AppHandle, picker: State<Picker>) -> CommandResult
 /// the overlay window for its DPI factor and does the conversion through
 /// `screen::overlay_point_to_snapshot`, which is the one place in the
 /// project allowed to do it.
+/// `async` for the same reason as [`start_pick`]: it closes a window.
 #[tauri::command]
-pub fn pick_at(
+pub async fn pick_at(
     app: tauri::AppHandle,
-    picker: State<Picker>,
+    picker: State<'_, Picker>,
     x: f64,
     y: f64,
 ) -> CommandResult<String> {
@@ -403,9 +419,11 @@ pub fn pick_at(
     Ok(hex)
 }
 
+/// `async` for the same reason as [`start_pick`]: it closes a window.
 #[tauri::command]
-pub fn cancel_pick(app: tauri::AppHandle, picker: State<Picker>) {
+pub async fn cancel_pick(app: tauri::AppHandle, picker: State<'_, Picker>) -> CommandResult<()> {
     close_overlay(&app, &picker);
+    Ok(())
 }
 
 fn close_overlay(app: &tauri::AppHandle, picker: &Picker) {
