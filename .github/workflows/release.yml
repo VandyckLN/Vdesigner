@@ -54,6 +54,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
       # O rav1e, dentro do ravif, monta suas rotinas de AVIF em assembly e não
       # compila sem o montador.
       - name: Install NASM
@@ -61,14 +63,19 @@ jobs:
         run: |
           choco install nasm -y --no-progress
           echo "C:\Program Files\NASM" >> $env:GITHUB_PATH
+      # A CLI do Tauri já vem pré-compilada em @tauri-apps/cli, dependência de
+      # desenvolvimento da interface. `cargo install tauri-cli` compilava a
+      # mesma ferramenta do zero a cada release — uns 8 minutos sem produzir
+      # nada do Vdesigner.
       - run: npm --prefix ui ci
-      - run: cargo install tauri-cli --version "^2" --locked
 
       - name: cargo tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: cargo tauri build
+        # Chamado pelo node, não por node_modules/.bin: no runner Windows o
+        # pwsh não executa o script sem extensão que o npm põe ali.
+        run: node ui/node_modules/@tauri-apps/cli/tauri.js build
 
       # O CI guarda a chave privada como segredo e o repositório guarda a
       # pública no tauri.conf.json; nada garante que sejam o mesmo par. Com um
