@@ -7,6 +7,7 @@ import {
   definirChecagemAutomatica,
   type Atualizacao,
 } from "../update";
+import { Guide } from "./Guide";
 
 export function About() {
   const [versao, setVersao] = useState("");
@@ -16,6 +17,7 @@ export function About() {
   const [procurando, setProcurando] = useState(false);
   const [progresso, setProgresso] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [guiaAberto, setGuiaAberto] = useState(false);
 
   useEffect(() => {
     void getVersion().then(setVersao);
@@ -66,6 +68,14 @@ export function About() {
     <section className="about">
       <h2>Sobre</h2>
       <p className="about-version">Vdesigner {versao}</p>
+      <button
+        type="button"
+        aria-expanded={guiaAberto}
+        onClick={() => setGuiaAberto((aberto) => !aberto)}
+      >
+        {guiaAberto ? "Fechar guia" : "Como usar"}
+      </button>
+      {guiaAberto && <Guide />}
       <button type="button" onClick={() => void procurar()} disabled={procurando}>
         Procurar atualizações
       </button>
