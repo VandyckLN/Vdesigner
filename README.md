@@ -1,5 +1,5 @@
 # Vdesigner
-
+ 
 Ferramenta de imagem para quem trabalha com interface. Converte, redimensiona
 sem distorção e melhora a qualidade de imagens numa única janela, com prévia ao
 vivo e estimativa de tamanho antes de exportar.
