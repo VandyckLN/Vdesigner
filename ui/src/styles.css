@@ -61,7 +61,7 @@ body {
 
 /* ---------- casco ---------- */
 
-.editor { display: flex; flex-direction: column; height: 100vh; }
+.editor { display: flex; flex-direction: column; height: 100%; }
 
 .editor__header {
   display: flex;
@@ -275,7 +275,23 @@ body {
 
 /* A lateral separa-se do conteúdo por fio de 1px, como todo o resto da
    identidade. O acento marca apenas o estado selecionado — nunca preenche. */
-.app-shell { display: grid; grid-template-columns: auto 1fr; min-height: 100vh; }
+/* As faixas (atalho tomado, falha na captura, atualização) entram nas três
+   primeiras linhas, e a barra lateral com a tela ativa fica sempre na quarta.
+   Com todas as linhas em auto, o grid dividia a altura que sobra do 100vh
+   entre elas, e uma faixa de uma linha virava um bloco de meia tela. Agora só
+   a quarta linha cresce; faixa ausente deixa linha de altura zero. A casca
+   tem a altura exata da janela e a tela ativa rola dentro da própria área:
+   assim o Editor ocupa o que sobra abaixo de uma faixa, sem barra de rolagem
+   na janela inteira. */
+.app-shell {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  height: 100vh;
+}
+.app-shell > .sidebar,
+.app-shell > [role="tabpanel"] { grid-row: 4; }
+.app-shell > [role="tabpanel"] { min-height: 0; overflow: auto; }
 
 .sidebar {
   display: flex;
