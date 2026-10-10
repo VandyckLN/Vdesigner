@@ -6182,7 +6182,7 @@ dependencies = [
 
 [[package]]
 name = "vdesigner"
-version = "2.2.1"
+version = "2.2.2"
 dependencies = [
  "base64 0.22.1",
  "image",
@@ -6203,7 +6203,7 @@ dependencies = [
 
 [[package]]
 name = "vdesigner-core"
-version = "2.2.1"
+version = "2.2.2"
 dependencies = [
  "fast_image_resize",
  "image",
