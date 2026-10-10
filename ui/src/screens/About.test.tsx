@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const procurarAtualizacaoManual = vi.fn();
@@ -89,5 +89,30 @@ describe("About", () => {
     render(<About />);
     await userEvent.click(screen.getByRole("checkbox", { name: /procurar atualizações ao abrir/i }));
     expect(definirChecagemAutomatica).toHaveBeenCalledWith(false);
+  });
+
+  describe("guia de uso", () => {
+    it("começa fechado", () => {
+      render(<About />);
+      expect(screen.getByRole("button", { name: "Como usar" })).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByRole("region", { name: "Como usar o Vdesigner" })).not.toBeInTheDocument();
+    });
+
+    it("abre com uma seção por função e fecha de novo", async () => {
+      render(<About />);
+      await userEvent.click(screen.getByRole("button", { name: "Como usar" }));
+
+      const guia = screen.getByRole("region", { name: "Como usar o Vdesigner" });
+      for (const titulo of ["Imagem", "Cores", "Atalhos", "O que ainda não existe"]) {
+        expect(within(guia).getByRole("heading", { name: titulo })).toBeInTheDocument();
+      }
+      // A pergunta que mais aparece: para onde vai a cor capturada.
+      expect(within(guia).getByText(/somem ao fechar/i)).toBeInTheDocument();
+
+      const fechar = screen.getByRole("button", { name: "Fechar guia" });
+      expect(fechar).toHaveAttribute("aria-expanded", "true");
+      await userEvent.click(fechar);
+      expect(screen.queryByRole("region", { name: "Como usar o Vdesigner" })).not.toBeInTheDocument();
+    });
   });
 });
