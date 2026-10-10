@@ -359,6 +359,12 @@ pub fn open_picker(app: &tauri::AppHandle, picker: &Picker) -> CommandResult<Ove
     )
     .title("Conta-gotas")
     .decorations(false)
+    // On Windows an undecorated window keeps an invisible shadow border, and
+    // tao counts it outside the client area: positioned at the monitor
+    // origin, the snapshot would start 8 px right and 1 px down, with the
+    // last columns pushed off screen. Without the shadow the client area is
+    // the whole window and lines up pixel for pixel with the screen.
+    .shadow(false)
     .always_on_top(true)
     .skip_taskbar(true)
     .resizable(false)
