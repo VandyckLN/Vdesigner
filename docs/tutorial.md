@@ -60,7 +60,8 @@ saída. Há dois modos.
   meta: um logo de 4 cores sai igual com 8. **Remover fundo** torna transparente
   a cor da borda em toda a imagem, inclusive dentro das letras.
 - **Uma cor** serve para ícone e assinatura. O desenho sai em `currentColor`,
-  que herda a cor do texto no site. **Copiar código SVG** leva o código pronto
+  que herda a cor do texto no site; por isso a prévia aparece preta, e no site ela
+  toma a cor do texto. **Copiar código SVG** leva o código pronto
   para colar no HTML.
 
 O tamanho mostrado para o SVG é exato, não estimativa.

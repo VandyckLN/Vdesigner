@@ -246,6 +246,19 @@ describe("Editor", () => {
     await waitFor(() => expect(copy()).toBeEnabled());
   });
 
+  it("esconde o tamanho do SVG anterior durante uma nova vetorização", async () => {
+    const second = deferred<SvgPreview>();
+    previewSvg.mockResolvedValueOnce({ svg: "<svg>1234</svg>" }).mockReturnValueOnce(second.promise);
+    await open();
+    await pickSvg();
+    expect(await screen.findByText(/^Tamanho /)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/^Cores/), { target: { value: "5" } });
+    await waitFor(() => expect(previewSvg).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/^Tamanho S/)).toBeNull();
+    second.resolve({ svg: "<svg>22222</svg>" });
+    expect(await screen.findByText(/^Tamanho /)).toBeInTheDocument();
+  });
+
   it("ignora uma prévia antiga que chega depois da nova", async () => {
     const a = deferred<PreviewResult>();
     const b = deferred<PreviewResult>();

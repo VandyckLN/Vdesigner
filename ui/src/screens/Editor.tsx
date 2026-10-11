@@ -87,6 +87,8 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
       lastFormat.current = settings.format;
       setEstimatedBytes(null);
     }
+    // The previous SVG's exact size must not linger while a new trace runs.
+    if (isSvg) setEstimatedBytes(null);
 
     timer.current = window.setTimeout(async () => {
       setBusy(true);
