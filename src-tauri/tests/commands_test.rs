@@ -80,6 +80,18 @@ fn two_color_png() -> Vec<u8> {
     out.into_inner()
 }
 
+/// The two halves with a single clear pixel: enough to send Foto original
+/// down the PNG branch.
+fn one_clear_pixel_png() -> Vec<u8> {
+    let mut img = image::load_from_memory(&two_color_png())
+        .unwrap()
+        .to_rgba8();
+    img.put_pixel(10, 10, image::Rgba([255, 0, 0, 0]));
+    let mut out = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut out, image::ImageFormat::Png).unwrap();
+    out.into_inner()
+}
+
 fn svg_job(format: vdesigner_core::OutputFormat) -> vdesigner_core::Job {
     vdesigner_core::Job {
         steps: vec![],
@@ -105,15 +117,36 @@ fn svg_preview_is_the_text_the_export_writes() {
 
 #[test]
 fn svg_preview_of_an_embedded_photo_is_the_text_the_export_writes() {
-    let bytes = two_color_png();
-    let mut job = svg_job(vdesigner_core::OutputFormat::Svg);
-    job.output.trace.mode = vdesigner_core::TraceMode::Embed;
-    let preview = vdesigner::commands::svg_preview(&bytes, &job, &|| false).unwrap();
-    assert!(preview.contains("xlink:href=\"data:image/jpeg;base64,"));
-    let exported = vdesigner_core::run_job(&bytes, &job, &mut |_| {})
-        .unwrap()
-        .bytes;
-    assert_eq!(preview, String::from_utf8(exported).unwrap());
+    let to_32 = vdesigner_core::Step::Resize(vdesigner_core::ResizeSpec {
+        width: Some(32),
+        height: None,
+        fit: vdesigner_core::FitMode::Contain,
+        pad_color: [0, 0, 0, 0],
+    });
+    for (steps, side) in [(vec![], 64), (vec![to_32], 32)] {
+        for (bytes, mime) in [
+            (two_color_png(), "image/jpeg"),
+            (one_clear_pixel_png(), "image/png"),
+        ] {
+            let case = format!("{mime}, {side} px");
+            let mut job = svg_job(vdesigner_core::OutputFormat::Svg);
+            job.output.trace.mode = vdesigner_core::TraceMode::Embed;
+            job.steps = steps.clone();
+            let preview = vdesigner::commands::svg_preview(&bytes, &job, &|| false).unwrap();
+            assert!(
+                preview.contains(&format!(" width=\"{side}\" height=\"{side}\"")),
+                "{case}"
+            );
+            assert!(
+                preview.contains(&format!("xlink:href=\"data:{mime};base64,")),
+                "{case}"
+            );
+            let exported = vdesigner_core::run_job(&bytes, &job, &mut |_| {})
+                .unwrap()
+                .bytes;
+            assert_eq!(preview, String::from_utf8(exported).unwrap(), "{case}");
+        }
+    }
 }
 
 #[test]
