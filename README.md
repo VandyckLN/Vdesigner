@@ -37,8 +37,9 @@ foto dentro do SVG: fica igual à original e leve, mas não vira formas editáve
 e pixela se ampliada além da resolução original. Foto em vetor transforma a
 foto em formas, com três níveis de detalhe, e fica com cara de pintura. Cores
 serve para logo e ilustração, e Uma cor, para ícone e assinatura, com
-`currentColor`. Tudo parte da resolução da imagem aberta, até 4096 px, e há
-botão para copiar o código SVG.
+`currentColor`. Tudo parte da resolução da imagem aberta, até 4096 px.
+Exportar maior que ela faz o trabalho sobre uma cópia ampliada, que demora ou
+pesa mais e não ganha detalhe. Há botão para copiar o código SVG.
 
 **Prever antes de gastar.** A prévia recalcula ao vivo enquanto você mexe nos
 controles, e a faixa de dados mostra a estimativa de tamanho do arquivo final.

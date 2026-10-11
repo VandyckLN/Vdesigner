@@ -46,9 +46,10 @@ export function Guide() {
           letras. Uma cor serve para ícone e assinatura e sai em currentColor, que herda a cor do
           texto no site; por isso a prévia aparece preta, e no site ela toma a cor do texto. Copiar
           código SVG leva o código pronto para colar no HTML. Nos modos que viram formas, o desenho
-          sai da resolução da imagem aberta, até 4096 px, mesmo que você exporte pequeno: parta do
-          maior arquivo que tiver. Abaixo de uns 100 px o contorno sai grosseiro, e imagem grande
-          leva alguns segundos. Para foto em site, WebP ou AVIF continua mais leve.
+          sai da resolução da imagem aberta, até 4096 px, mesmo que você exporte pequeno. Exportar
+          maior que a imagem aberta faz o desenho sobre a cópia ampliada: demora mais e não ganha
+          detalhe. Parta do maior arquivo que tiver. Abaixo de uns 100 px o contorno sai grosseiro,
+          e imagem grande leva alguns segundos. Para foto em site, WebP ou AVIF continua mais leve.
         </dd>
         <dt>Prévia e tamanho</dt>
         <dd>

@@ -80,10 +80,13 @@ quatro modos.
 O tamanho mostrado para o SVG é exato, não estimativa.
 
 Nos modos que viram formas, o desenho é calculado na resolução da imagem
-aberta, de 512 a 4096 px. O tamanho de exportação só muda `width` e `height`:
-um ícone exportado a 24 px vem do logo inteiro, não de uma miniatura. Por isso
-vale partir do maior arquivo que houver. Abaixo de uns 100 px o contorno sai
-grosseiro, e um detalhe de até 2 px pode sumir.
+aberta: abaixo de 512 px ela é ampliada até 512 px, e acima de 4096 px é
+reduzida até 4096 px. Exportar menor só muda `width` e `height`: um ícone
+exportado a 24 px vem do logo inteiro, não de uma miniatura. Exportar maior que
+a imagem aberta faz o desenho ser calculado sobre a cópia ampliada, até
+4096 px: demora mais e não ganha detalhe. Por isso vale partir do maior arquivo
+que houver. Abaixo de uns 100 px o contorno sai grosseiro, e um detalhe de até
+2 px pode sumir.
 
 A Foto original segue a mesma regra, com uma diferença que pesa no arquivo: a
 foto guardada fica no tamanho da imagem aberta, até 4096 px, sem o mínimo de
