@@ -17,15 +17,39 @@ use crate::resize::{resize, FitMode, ResizeSpec};
 pub enum TraceMode {
     Mono,
     Color,
+    /// Faithful photo: a large palette, background always kept.
+    Photo,
+}
+
+/// Photo palette size.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum TraceDetail {
+    #[default]
+    Normal,
+    High,
+    Max,
+}
+
+impl TraceDetail {
+    pub fn colors(self) -> usize {
+        match self {
+            TraceDetail::Normal => 64,
+            TraceDetail::High => 128,
+            TraceDetail::Max => 255,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TraceSpec {
     pub mode: TraceMode,
-    /// 2 to 16. Validated in both modes, used only by Color.
+    /// 2 to 16. Validated in Color and Mono, used only by Color; Photo ignores it.
     pub colors: u8,
     /// Color only: the colour that dominates the border becomes transparent.
     pub remove_background: bool,
+    /// Photo only.
+    #[serde(default)]
+    pub detail: TraceDetail,
 }
 
 impl Default for TraceSpec {
@@ -34,6 +58,7 @@ impl Default for TraceSpec {
             mode: TraceMode::Color,
             colors: 8,
             remove_background: true,
+            detail: TraceDetail::Normal,
         }
     }
 }
@@ -65,7 +90,7 @@ pub fn trace_svg(
     size: (u32, u32),
     cancel: &dyn Fn() -> bool,
 ) -> Result<Vec<u8>, CoreError> {
-    if !(2..=16).contains(&spec.colors) {
+    if spec.mode != TraceMode::Photo && !(2..=16).contains(&spec.colors) {
         return Err(CoreError::InvalidParameter(format!(
             "cores deve ficar entre 2 e 16, recebido {}",
             spec.colors
@@ -73,7 +98,13 @@ pub fn trace_svg(
     }
     let source = img.to_rgba8();
     let body = match spec.mode {
-        TraceMode::Color => trace_color(&source, spec, cancel)?,
+        TraceMode::Color => trace_color(
+            &source,
+            spec.colors as usize,
+            spec.remove_background,
+            cancel,
+        )?,
+        TraceMode::Photo => trace_color(&source, spec.detail.colors(), false, cancel)?,
         TraceMode::Mono => trace_mono(&source, cancel)?,
     };
     let mut out = format!(
@@ -407,10 +438,10 @@ fn hex(c: [u8; 3]) -> String {
 
 fn trace_color(
     source: &RgbaImage,
-    spec: &TraceSpec,
+    n: usize,
+    remove_background: bool,
     cancel: &dyn Fn() -> bool,
 ) -> Result<Traced, CoreError> {
-    let n = spec.colors as usize;
     let long = longest_side(source);
     let (w, h, palette, mut labels) = if long < TRACE_MIN_SIDE {
         let (palette, mut labels) = reduce(source, n, cancel)?;
@@ -435,7 +466,7 @@ fn trace_color(
     };
     let (wu, hu) = (w as usize, h as usize);
 
-    if spec.remove_background {
+    if remove_background {
         let mut counts = vec![0usize; palette.len()];
         let mut total = 0usize;
         for i in frame_indices(wu, hu) {

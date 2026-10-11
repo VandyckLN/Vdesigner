@@ -2,7 +2,7 @@ mod common;
 
 use vdesigner_core::{
     run_job, run_job_cancellable, run_preview, CoreError, DenoiseSpec, EncodeSpec, FitMode, Job,
-    OutputFormat, Progress, ResizeSpec, SharpenSpec, Step, TraceMode, TraceSpec,
+    OutputFormat, Progress, ResizeSpec, SharpenSpec, Step, TraceDetail, TraceMode, TraceSpec,
 };
 
 fn png_input(width: u32, height: u32) -> Vec<u8> {
@@ -163,7 +163,8 @@ fn contract_json_from_the_ui_deserializes_into_a_job() {
         TraceSpec {
             mode: TraceMode::Color,
             colors: 8,
-            remove_background: true
+            remove_background: true,
+            detail: TraceDetail::Normal,
         }
     );
     assert_eq!(job.steps.len(), 4);

@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use image::{DynamicImage, RgbaImage};
-use vdesigner_core::{rasterize_svg, trace_svg, CoreError, TraceMode, TraceSpec};
+use vdesigner_core::{rasterize_svg, trace_svg, CoreError, TraceDetail, TraceMode, TraceSpec};
 
 const RED: [u8; 4] = [220, 30, 30, 255];
 const BLUE: [u8; 4] = [30, 30, 220, 255];
@@ -12,7 +12,43 @@ fn color(n: u8, bg: bool) -> TraceSpec {
         mode: TraceMode::Color,
         colors: n,
         remove_background: bg,
+        ..TraceSpec::default()
     }
+}
+
+fn photo(detail: TraceDetail, bg: bool) -> TraceSpec {
+    TraceSpec {
+        mode: TraceMode::Photo,
+        detail,
+        colors: 99,
+        remove_background: bg,
+    }
+}
+
+/// Smooth two-axis gradient, a stand-in for a photo.
+fn gradient(side: u32) -> DynamicImage {
+    img(side, side, |x, y| {
+        let u = x * 255 / (side - 1);
+        let v = y * 255 / (side - 1);
+        [u as u8, v as u8, ((u + v) / 2) as u8, 255]
+    })
+}
+
+fn distinct(svg: &str) -> usize {
+    fills(svg)
+        .into_iter()
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+}
+
+fn mae(a: &RgbaImage, b: &RgbaImage) -> f64 {
+    let mut sum = 0u64;
+    for (p, q) in a.pixels().zip(b.pixels()) {
+        for ch in 0..3 {
+            sum += p[ch].abs_diff(q[ch]) as u64;
+        }
+    }
+    sum as f64 / (a.pixels().len() * 3) as f64
 }
 
 fn mono() -> TraceSpec {
@@ -343,4 +379,81 @@ fn stops_mid_trace_when_cancelled() {
     let result = trace_svg(&picture, &color(8, false), (640, 640), &cancel);
     assert!(matches!(result, Err(CoreError::Cancelled)));
     assert!(calls.get() > 3);
+}
+
+#[test]
+fn photo_keeps_far_more_colours_and_reconstructs_closer_than_color() {
+    let src = gradient(512);
+    let poster = trace(&src, &color(16, false)).unwrap();
+    let fiel = trace(&src, &photo(TraceDetail::Normal, false)).unwrap();
+    assert!(distinct(&text(&fiel)) >= 3 * distinct(&text(&poster)));
+    let rgba = src.to_rgba8();
+    let e_poster = mae(&rgba, &back(&poster, 512, 512));
+    let e_fiel = mae(&rgba, &back(&fiel, 512, 512));
+    assert!(
+        e_fiel < e_poster * 0.75,
+        "foto {e_fiel} vs cores {e_poster}"
+    );
+}
+
+#[test]
+fn photo_never_removes_the_background() {
+    let src = img(512, 512, |x, y| {
+        let inside = (x as i32 - 256).abs() < 100 && (y as i32 - 256).abs() < 100;
+        if inside {
+            RED
+        } else {
+            [255, 255, 255, 255]
+        }
+    });
+    let out = trace(&src, &photo(TraceDetail::Normal, true)).unwrap();
+    let raster = back(&out, 512, 512);
+    let corner = raster.get_pixel(3, 3);
+    assert_eq!(corner[3], 255);
+    assert!(near(rgb(corner), [255, 255, 255], 2));
+}
+
+#[test]
+fn photo_detail_levels_grow_the_palette() {
+    let src = gradient(512);
+    let counts: Vec<usize> = [TraceDetail::Normal, TraceDetail::High, TraceDetail::Max]
+        .into_iter()
+        .map(|d| distinct(&text(&trace(&src, &photo(d, false)).unwrap())))
+        .collect();
+    assert!(
+        counts[0] > 16 && counts[0] < counts[1] && counts[1] < counts[2],
+        "{counts:?}"
+    );
+    assert!(counts[2] <= 255);
+}
+
+#[test]
+fn photo_ignores_the_colour_count() {
+    trace(&halves(), &photo(TraceDetail::Max, false)).unwrap();
+}
+
+#[test]
+fn reads_old_json_without_detail() {
+    let spec: TraceSpec =
+        serde_json::from_str(r#"{"mode":"Color","colors":8,"remove_background":true}"#).unwrap();
+    assert_eq!(spec.detail, TraceDetail::Normal);
+    let spec: TraceSpec = serde_json::from_str(
+        r#"{"mode":"Photo","detail":"High","colors":8,"remove_background":false}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        (spec.mode, spec.detail),
+        (TraceMode::Photo, TraceDetail::High)
+    );
+}
+
+#[test]
+fn photo_stops_when_cancelled() {
+    let r = trace_svg(
+        &gradient(512),
+        &photo(TraceDetail::Normal, false),
+        (512, 512),
+        &|| true,
+    );
+    assert!(matches!(r, Err(CoreError::Cancelled)));
 }
