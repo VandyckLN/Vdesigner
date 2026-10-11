@@ -18,7 +18,8 @@ use crate::resize::{resize, FitMode, ResizeSpec};
 pub enum TraceMode {
     Mono,
     Color,
-    /// Faithful photo: a large palette, background always kept.
+    /// A photo traced into editable shapes from a large palette, background
+    /// always kept. It comes out looking painted, and heavy.
     Photo,
     /// The picture itself inside the SVG, not traced.
     Embed,
