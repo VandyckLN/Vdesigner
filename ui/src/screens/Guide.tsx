@@ -36,20 +36,22 @@ export function Guide() {
           Compressão vale para essa foto; com transparência, inclusive as faixas que o Caber dentro
           acrescenta, ela vai em PNG, sem perda e mais pesada, e a Compressão não muda nada.
           Exportar pequeno não deixa a Foto original mais leve, porque ela guarda a foto no tamanho
-          da imagem aberta, até 4096 px: para pesar menos, baixe a Compressão ou abra uma versão
-          menor da foto. Exportar maior que a imagem amplia a foto guardada junto: o arquivo pesa
-          mais e não ganha detalhe. Foto em vetor vira formas, mas com cara de pintura: pele vira
-          mancha chapada e textura fina some. Detalhe (Normal, Alto, Máximo) troca peso por
-          fidelidade, e a mesma foto leva uns 6 s e 4,6 MB no Normal, 8 s e 5,1 MB no Alto, 11 s e
-          5,5 MB no Máximo. Cores serve para logo e ilustração: o número é o teto de cores, e
-          Remover fundo torna transparente a cor da borda em toda a imagem, inclusive dentro das
-          letras. Uma cor serve para ícone e assinatura e sai em currentColor, que herda a cor do
-          texto no site; por isso a prévia aparece preta, e no site ela toma a cor do texto. Copiar
-          código SVG leva o código pronto para colar no HTML. Nos modos que viram formas, o desenho
-          sai da resolução da imagem aberta, até 4096 px, mesmo que você exporte pequeno. Exportar
-          maior que a imagem aberta faz o desenho sobre a cópia ampliada: demora mais e não ganha
-          detalhe. Parta do maior arquivo que tiver. Abaixo de uns 100 px o contorno sai grosseiro,
-          e imagem grande leva alguns segundos. Para foto em site, WebP ou AVIF continua mais leve.
+          da imagem aberta, até 4096 px. Com Caber dentro numa proporção diferente, a foto ocupa só
+          parte do alvo e é guardada menor; com Preencher e recortar, o recorte pode ser ampliado.
+          Para pesar menos, baixe a Compressão ou abra uma versão menor da foto. Exportar maior que
+          a imagem amplia a foto guardada junto: o arquivo pesa mais e não ganha detalhe. Foto em
+          vetor vira formas, mas com cara de pintura: pele vira mancha chapada e textura fina some.
+          Detalhe (Normal, Alto, Máximo) troca peso por fidelidade, e a mesma foto leva uns 6 s e
+          4,6 MB no Normal, 8 s e 5,1 MB no Alto, 11 s e 5,5 MB no Máximo. Cores serve para logo e
+          ilustração: o número é o teto de cores, e Remover fundo torna transparente a cor da borda
+          em toda a imagem, inclusive dentro das letras. Uma cor serve para ícone e assinatura e sai
+          em currentColor, que herda a cor do texto no site; por isso a prévia aparece preta, e no
+          site ela toma a cor do texto. Copiar código SVG leva o código pronto para colar no HTML.
+          Nos modos que viram formas, o desenho sai da resolução da imagem aberta, até 4096 px,
+          mesmo que você exporte pequeno. Exportar maior que a imagem aberta faz o desenho sobre a
+          cópia ampliada: demora mais e não ganha detalhe. Parta do maior arquivo que tiver. Abaixo
+          de uns 100 px o contorno sai grosseiro, e imagem grande leva alguns segundos. Para foto em
+          site, WebP ou AVIF continua mais leve.
         </dd>
         <dt>Prévia e tamanho</dt>
         <dd>

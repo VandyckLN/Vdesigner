@@ -39,7 +39,9 @@ foto em formas, com três níveis de detalhe, e fica com cara de pintura. Cores
 serve para logo e ilustração, e Uma cor, para ícone e assinatura, com
 `currentColor`. Tudo parte da resolução da imagem aberta, até 4096 px.
 Exportar maior que ela faz o trabalho sobre uma cópia ampliada, que demora ou
-pesa mais e não ganha detalhe. Há botão para copiar o código SVG.
+pesa mais e não ganha detalhe. Na Foto original, Caber dentro numa proporção
+diferente guarda a foto menor, e Preencher e recortar pode ampliar o recorte.
+Há botão para copiar o código SVG.
 
 **Prever antes de gastar.** A prévia recalcula ao vivo enquanto você mexe nos
 controles, e a faixa de dados mostra a estimativa de tamanho do arquivo final.
@@ -146,7 +148,9 @@ A Foto original, o padrão do SVG, é uma foto dentro do SVG: uma foto de
 pixela se ampliada além da resolução original e pesa um terço a mais que a
 mesma foto num JPG. Ela guarda a foto no tamanho da imagem aberta, até
 4096 px: exportar pequeno não a deixa mais leve, e exportar maior amplia a foto
-guardada junto, o que pesa mais e não ganha detalhe. A Foto em vetor vira
+guardada junto, o que pesa mais e não ganha detalhe. Com Caber dentro numa
+proporção diferente, a foto ocupa só parte do alvo e é guardada menor; com
+Preencher e recortar, o recorte pode ser ampliado. A Foto em vetor vira
 formas, mas fica com cara de pintura e pesa MB: a mesma foto leva uns 6 s e
 4,6 MB no Normal, 8 s e 5,1 MB no Alto, 11 s e 5,5 MB no Máximo. Para foto em
 site, WebP ou AVIF continua mais leve. Imagem abaixo de uns 100 px vetoriza

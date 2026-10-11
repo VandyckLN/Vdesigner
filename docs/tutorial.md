@@ -90,7 +90,9 @@ que houver. Abaixo de uns 100 px o contorno sai grosseiro, e um detalhe de até
 
 A Foto original segue a mesma regra, com uma diferença que pesa no arquivo: a
 foto guardada fica no tamanho da imagem aberta, até 4096 px, sem o mínimo de
-512 px. Exportar com largura menor só muda `width` e `height`, então não deixa
+512 px. Com Caber dentro numa proporção diferente, a foto ocupa só parte do
+alvo e é guardada menor; com Preencher e recortar, o recorte pode ser ampliado.
+Exportar com largura menor só muda `width` e `height`, então não deixa
 o SVG mais leve. Para pesar menos, baixe a Compressão, ou exporte antes um JPG
 no tamanho certo e abra esse JPG. Já pedir um tamanho maior que o da imagem
 amplia a foto guardada junto: o arquivo fica mais pesado e não ganha detalhe.
