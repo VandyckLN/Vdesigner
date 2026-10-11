@@ -52,16 +52,21 @@ pub(crate) fn embed_svg(
     check(cancel)?;
 
     let (w, h) = size;
-    let data = STANDARD.encode(&picture);
-    let mut out = String::with_capacity(data.len() + 256);
-    out.push_str(&format!(
+    let svg = format!(
         "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\">\n"
-    ));
-    out.push_str(&format!(
+    );
+    let image = format!(
         "<image width=\"{w}\" height=\"{h}\" preserveAspectRatio=\"none\" xlink:href=\"data:{mime};base64,"
-    ));
-    out.push_str(&data);
-    out.push_str("\"/>\n</svg>\n");
+    );
+    let end = "\"/>\n</svg>\n";
+    // Base64 takes 4 characters for every 3 bytes, so this is the final
+    // length, and the picture is encoded straight into the SVG, in one copy.
+    let data = picture.len().div_ceil(3) * 4;
+    let mut out = String::with_capacity(svg.len() + image.len() + data + end.len());
+    out.push_str(&svg);
+    out.push_str(&image);
+    STANDARD.encode_string(&picture, &mut out);
+    out.push_str(end);
     Ok(out.into_bytes())
 }
 
