@@ -76,7 +76,7 @@ arquivo que houver. Abaixo de uns 100 px o contorno sai grosseiro, e um detalhe
 de até 2 px pode sumir.
 
 Quanto demora: logo de até 2000 px em menos de 2 s, de 4096 px em uns 6 s, foto
-grande em até 40 s. A janela não trava.
+grande de 4096 px no modo Cores em até 40 s. A janela não trava.
 
 No modo Foto, uma foto de 1563 px leva uns 6,5 s e sai com 4,6 MB no Normal,
 uns 8 s e 5 MB no Alto, uns 14 s e 5,5 MB no Máximo. Foto fica fiel mas
