@@ -2,7 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export type OutputFormat = "WebP" | "Avif" | "Png" | "Jpeg" | "Tiff" | "Ico" | "Svg";
-export type TraceMode = "Photo" | "Color" | "Mono";
+/** Embed keeps the picture itself inside the SVG; the other three trace it into shapes. */
+export type TraceMode = "Embed" | "Photo" | "Color" | "Mono";
 export type TraceDetail = "Normal" | "High" | "Max";
 export interface TraceSpec { mode: TraceMode; colors: number; remove_background: boolean; detail: TraceDetail }
 export type FitMode = "Contain" | "Cover" | "Stretch";

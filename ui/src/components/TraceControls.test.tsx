@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TraceControls } from "./TraceControls";
@@ -30,23 +30,36 @@ describe("TraceControls", () => {
     expect(screen.getByText(/currentColor/)).toBeInTheDocument();
   });
 
-  it("lista os modos com Foto primeiro", () => {
+  it("lista Foto original, Foto em vetor, Cores e Uma cor, nesta ordem", () => {
     render(<TraceControls settings={base} onChange={vi.fn()} svgCode="<svg/>" onError={vi.fn()} />);
-    const names = screen.getAllByRole("option").map((o) => o.textContent);
-    expect(names.slice(0, 3)).toEqual([
-      expect.stringMatching(/^Foto \(fiel\)/),
-      expect.stringMatching(/^Cores \(logo/),
-      expect.stringMatching(/^Uma cor \(ícone/),
+    const options = within(screen.getByLabelText("Modo")).getAllByRole<HTMLOptionElement>("option");
+    expect(options.map((o) => [o.value, o.textContent])).toEqual([
+      ["Embed", "Foto original"],
+      ["Photo", "Foto em vetor"],
+      ["Color", expect.stringMatching(/^Cores \(logo/)],
+      ["Mono", expect.stringMatching(/^Uma cor \(ícone/)],
     ]);
   });
 
-  it("no modo Foto mostra Detalhe e esconde Cores e Remover fundo", async () => {
+  it("no modo Foto original esconde Detalhe, Cores e Remover fundo e diz o que fica no arquivo", () => {
+    render(<TraceControls settings={{ ...base, traceMode: "Embed" }} onChange={vi.fn()} svgCode="<svg/>" onError={vi.fn()} />);
+    expect(screen.getByRole("group", { name: "SVG" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Detalhe")).toBeNull();
+    expect(screen.queryByLabelText(/^Cores/)).toBeNull();
+    expect(screen.queryByLabelText("Remover fundo")).toBeNull();
+    expect(screen.getByText(/não vira formas editáveis/)).toBeInTheDocument();
+    expect(screen.getByText(/pixela/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copiar código SVG" })).toBeEnabled();
+  });
+
+  it("no modo Foto em vetor mostra Detalhe e esconde Cores e Remover fundo", async () => {
     const onChange = vi.fn();
     render(<TraceControls settings={{ ...base, traceMode: "Photo" }} onChange={onChange} svgCode="<svg/>" onError={vi.fn()} />);
     expect(screen.queryByLabelText(/^Cores/)).toBeNull();
     expect(screen.queryByLabelText("Remover fundo")).toBeNull();
     const detail = screen.getByLabelText("Detalhe");
     expect(Array.from(detail.querySelectorAll("option")).map((o) => o.textContent)).toEqual(["Normal", "Alto", "Máximo"]);
+    expect(screen.getByText(/cara de pintura/)).toBeInTheDocument();
     await userEvent.selectOptions(detail, "Max");
     expect(onChange).toHaveBeenCalledWith({ ...base, traceMode: "Photo", traceDetail: "Max" });
   });

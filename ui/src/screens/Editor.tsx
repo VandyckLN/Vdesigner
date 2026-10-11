@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   saturation: 0,
   format: "WebP",
   quality: 82,
-  traceMode: "Photo",
+  traceMode: "Embed",
   traceColors: 8,
   removeBackground: true,
   traceDetail: "Normal",
@@ -88,7 +88,7 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
       lastFormat.current = settings.format;
       setEstimatedBytes(null);
     }
-    // The previous SVG's exact size must not linger while a new trace runs.
+    // The previous SVG's exact size must not linger while a new one is made.
     if (isSvg) setEstimatedBytes(null);
 
     timer.current = window.setTimeout(async () => {
@@ -162,7 +162,7 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
         )}
         {busy && (
           <span role="status" className="mono">
-            {settings.format === "Svg" ? "vetorizando…" : "processando…"}
+            {settings.format === "Svg" && settings.traceMode !== "Embed" ? "vetorizando…" : "processando…"}
           </span>
         )}
       </header>

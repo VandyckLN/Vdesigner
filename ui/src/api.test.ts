@@ -47,6 +47,12 @@ describe("buildJob", () => {
     expect(job.output.trace).toEqual({ mode: "Photo", colors: 8, remove_background: true, detail: "Max" });
   });
 
+  it("leva o modo Foto original e a compressão da foto guardada para o job", () => {
+    const job = buildJob({ ...base, format: "Svg", traceMode: "Embed", quality: 60 });
+    expect(job.output).toEqual({ format: "Svg", quality: 60, lossless: false,
+      trace: { mode: "Embed", colors: 8, remove_background: true, detail: "Normal" } });
+  });
+
   it("inclui o resize quando há largura", () => {
     const job = buildJob({ ...base, width: 1920 });
     expect(job.steps).toEqual([

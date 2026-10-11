@@ -199,17 +199,18 @@ describe("Editor", () => {
   };
   const png = (b: string): PreviewResult => ({ png_base64: b, width: 1, height: 1 });
 
-  it("oferece SVG (vetorizado) no formato de saída", async () => {
+  it("oferece SVG no formato de saída, sem prometer vetorização", async () => {
     await open();
-    expect(screen.getByRole("option", { name: "SVG (vetorizado)" })).toBeEnabled();
+    expect(screen.getByRole("option", { name: "SVG" })).toBeEnabled();
+    expect(screen.queryByRole("option", { name: /vetorizado/ })).toBeNull();
   });
 
   it("desabilita SVG quando a imagem aberta já é SVG", async () => {
     await open(true);
-    expect(screen.getByRole("option", { name: "SVG (vetorizado)" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: "SVG" })).toBeDisabled();
   });
 
-  it("usa a prévia vetorial e mostra o tamanho exato do SVG", async () => {
+  it("usa a prévia SVG em Foto original e mostra o tamanho exato do SVG", async () => {
     previewSvg.mockResolvedValue({ svg: "<svg>" + "a".repeat(1234 - 11) + "</svg>" });
     await open();
     estimate.mockClear();
@@ -217,20 +218,39 @@ describe("Editor", () => {
     expect(await screen.findByText(`Tamanho ${formatBytes(1234)}`)).toBeInTheDocument();
     const job = previewSvg.mock.calls[0][0];
     expect(job.output.format).toBe("Svg");
-    expect(job.output.trace).toEqual({ mode: "Photo", colors: 8, remove_background: true, detail: "Normal" });
+    expect(job.output.trace).toEqual({ mode: "Embed", colors: 8, remove_background: true, detail: "Normal" });
     expect(estimate).not.toHaveBeenCalled();
     expect(screen.queryByText(/estimado/)).toBeNull();
     expect(src()).toMatch(/^data:image\/svg\+xml/);
   });
 
-  it("mostra vetorizando… enquanto a prévia vetorial não chega", async () => {
-    const d = deferred<SvgPreview>();
-    previewSvg.mockReturnValue(d.promise);
+  it("mostra processando… na Foto original e vetorizando… na Foto em vetor", async () => {
+    const embed = deferred<SvgPreview>();
+    const traced = deferred<SvgPreview>();
+    previewSvg.mockReturnValueOnce(embed.promise).mockReturnValueOnce(traced.promise);
     await open();
     await pickSvg();
-    expect(await screen.findByRole("status")).toHaveTextContent("vetorizando…");
-    d.resolve({ svg: "<svg/>" });
+    await waitFor(() => expect(previewSvg).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("status")).toHaveTextContent("processando…");
+    embed.resolve({ svg: "<svg/>" });
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    await userEvent.selectOptions(screen.getByLabelText("Modo"), "Photo");
+    await waitFor(() => expect(previewSvg).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("status")).toHaveTextContent("vetorizando…");
+    traced.resolve({ svg: "<svg/>" });
     await waitFor(() => expect(screen.queryByText("vetorizando…")).toBeNull());
+  });
+
+  it("mostra Compressão na Foto original e a leva para o job; na Foto em vetor ela some", async () => {
+    previewSvg.mockResolvedValue({ svg: "<svg/>" });
+    await open();
+    await pickSvg();
+    fireEvent.change(screen.getByLabelText(/compressão/i), { target: { value: "60" } });
+    await waitFor(() => expect(previewSvg.mock.lastCall?.[0].output.quality).toBe(60));
+    expect(previewSvg.mock.lastCall?.[0].output.trace.mode).toBe("Embed");
+    await userEvent.selectOptions(screen.getByLabelText("Modo"), "Photo");
+    expect(screen.queryByLabelText(/compressão/i)).toBeNull();
+    expect(screen.getByLabelText("Detalhe")).toBeInTheDocument();
   });
 
   it("desabilita Copiar código SVG até a prévia nova chegar", async () => {
@@ -240,7 +260,7 @@ describe("Editor", () => {
     await pickSvg();
     const copy = () => screen.getByRole("button", { name: "Copiar código SVG" });
     await waitFor(() => expect(copy()).toBeEnabled());
-    fireEvent.change(screen.getByLabelText("Detalhe"), { target: { value: "High" } });
+    fireEvent.change(screen.getByLabelText(/compressão/i), { target: { value: "60" } });
     await waitFor(() => expect(copy()).toBeDisabled());
     second.resolve({ svg: "<svg>2</svg>" });
     await waitFor(() => expect(copy()).toBeEnabled());
@@ -252,9 +272,9 @@ describe("Editor", () => {
     await open();
     await pickSvg();
     expect(await screen.findByText(/^Tamanho /)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Detalhe"), { target: { value: "High" } });
+    fireEvent.change(screen.getByLabelText(/compressão/i), { target: { value: "60" } });
     await waitFor(() => expect(previewSvg).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText(/^Tamanho S/)).toBeNull();
+    expect(screen.queryByText(/^Tamanho /)).toBeNull();
     second.resolve({ svg: "<svg>22222</svg>" });
     expect(await screen.findByText(/^Tamanho /)).toBeInTheDocument();
   });

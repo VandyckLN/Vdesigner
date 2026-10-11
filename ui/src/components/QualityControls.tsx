@@ -13,10 +13,14 @@ const FORMATS: { value: OutputFormat; label: string }[] = [
   { value: "Jpeg", label: "JPG" },
   { value: "Tiff", label: "TIFF" },
   { value: "Ico", label: "ICO (até 256px)" },
-  { value: "Svg", label: "SVG (vetorizado)" },
+  { value: "Svg", label: "SVG" },
 ];
 
 const LOSSY: OutputFormat[] = ["WebP", "Avif", "Jpeg"];
+
+/** Foto original keeps a JPEG inside the SVG, so the slider applies to it too. */
+const compresses = (settings: EditorSettings) =>
+  LOSSY.includes(settings.format) || (settings.format === "Svg" && settings.traceMode === "Embed");
 
 export function QualityControls({ settings, onChange, isVector }: QualityControlsProps) {
   const slider = (
@@ -67,7 +71,7 @@ export function QualityControls({ settings, onChange, isVector }: QualityControl
         ))}
       </select>
 
-      {LOSSY.includes(settings.format) &&
+      {compresses(settings) &&
         slider("quality", "Compressão", settings.quality, 1, 100, 1, "quality")}
     </fieldset>
   );
