@@ -10,6 +10,8 @@ interface ExportBarProps {
   onOutputDirChange: (dir: string) => void;
   /** Approximate size of the file this job would write, or null while unknown. */
   estimatedBytes: number | null;
+  /** True when the size is the real file size (SVG), not an estimate. */
+  sizeIsExact: boolean;
   onPickDirectory: () => Promise<string | null>;
   onError: (message: string | null) => void;
 }
@@ -20,6 +22,7 @@ export function ExportBar({
   outputDir,
   onOutputDirChange,
   estimatedBytes,
+  sizeIsExact,
   onPickDirectory,
   onError,
 }: ExportBarProps) {
@@ -112,7 +115,11 @@ export function ExportBar({
       {overwrite && <small>O arquivo existente será substituído sem aviso.</small>}
 
       {estimatedBytes !== null && (
-        <p className="mono">Tamanho estimado ~{formatBytes(estimatedBytes)}</p>
+        <p className="mono">
+          {sizeIsExact
+            ? `Tamanho ${formatBytes(estimatedBytes)}`
+            : `Tamanho estimado ~${formatBytes(estimatedBytes)}`}
+        </p>
       )}
 
       <button

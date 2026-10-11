@@ -3,6 +3,7 @@ import { api, buildJob, type EditorSettings, type ImageInfo } from "../api";
 import { PreviewPane } from "../components/PreviewPane";
 import { ResizeControls } from "../components/ResizeControls";
 import { QualityControls } from "../components/QualityControls";
+import { TraceControls } from "../components/TraceControls";
 import { ExportBar } from "../components/ExportBar";
 import { VdkMark } from "../components/VdkMark";
 
@@ -18,6 +19,9 @@ const DEFAULT_SETTINGS: EditorSettings = {
   saturation: 0,
   format: "WebP",
   quality: 82,
+  traceMode: "Color",
+  traceColors: 8,
+  removeBackground: true,
 };
 
 /** Waiting this long after the last control change keeps the preview from
@@ -45,6 +49,10 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
   // destination the person already chose.
   const [outputDir, setOutputDir] = useState("");
   const [estimatedBytes, setEstimatedBytes] = useState<number | null>(null);
+  const [svgCode, setSvgCode] = useState<string | null>(null);
+  // Counts preview runs so a response that arrives after a newer run started
+  // (or after the format changed) can be recognised and dropped.
+  const previewRequest = useRef(0);
   const timer = useRef<number | null>(null);
   const estimateTimer = useRef<number | null>(null);
 
@@ -67,16 +75,34 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
     if (!image) return;
     if (timer.current !== null) window.clearTimeout(timer.current);
 
+    const id = ++previewRequest.current;
+    const isSvg = settings.format === "Svg";
+    // A fresh run invalidates whatever SVG text was showing: copying must wait
+    // for the preview that matches the current controls.
+    setSvgCode(null);
+
     timer.current = window.setTimeout(async () => {
       setBusy(true);
       try {
-        const result = await api.preview(buildJob(settings));
-        setPreviewSrc(`data:image/png;base64,${result.png_base64}`);
+        if (isSvg) {
+          const { svg } = await api.previewSvg(buildJob(settings));
+          if (id !== previewRequest.current) return;
+          setPreviewSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+          setSvgCode(svg);
+          setEstimatedBytes(new TextEncoder().encode(svg).length);
+        } else {
+          const result = await api.preview(buildJob(settings));
+          if (id !== previewRequest.current) return;
+          setPreviewSrc(`data:image/png;base64,${result.png_base64}`);
+        }
         setError(null);
       } catch (e) {
+        // A superseded run's failure (including the backend's "cancelada")
+        // belongs to a request nobody is waiting for any more.
+        if (id !== previewRequest.current) return;
         setError(String(e));
       } finally {
-        setBusy(false);
+        if (id === previewRequest.current) setBusy(false);
       }
     }, PREVIEW_DEBOUNCE_MS);
 
@@ -86,7 +112,7 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
   }, [settings, image]);
 
   useEffect(() => {
-    if (!image) return;
+    if (!image || settings.format === "Svg") return;
     if (estimateTimer.current !== null) window.clearTimeout(estimateTimer.current);
 
     estimateTimer.current = window.setTimeout(async () => {
@@ -122,7 +148,7 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
         )}
         {busy && (
           <span role="status" className="mono">
-            processando…
+            {settings.format === "Svg" ? "vetorizando…" : "processando…"}
           </span>
         )}
       </header>
@@ -141,7 +167,15 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
               sourceHeight={image.height}
               onChange={setSettings}
             />
-            <QualityControls settings={settings} onChange={setSettings} />
+            <QualityControls settings={settings} onChange={setSettings} isVector={image.is_vector} />
+            {settings.format === "Svg" && (
+              <TraceControls
+                settings={settings}
+                onChange={setSettings}
+                svgCode={svgCode}
+                onError={setError}
+              />
+            )}
             {/* Remounting on a new image resets the export name and the
                 overwrite flag, which would otherwise carry over from the
                 previously opened file. The output folder is deliberately
@@ -153,6 +187,7 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
               outputDir={outputDir}
               onOutputDirChange={setOutputDir}
               estimatedBytes={estimatedBytes}
+              sizeIsExact={settings.format === "Svg"}
               onPickDirectory={onPickDirectory}
               onError={setError}
             />

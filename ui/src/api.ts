@@ -1,7 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-export type OutputFormat = "WebP" | "Avif" | "Png" | "Jpeg" | "Tiff" | "Ico";
+export type OutputFormat = "WebP" | "Avif" | "Png" | "Jpeg" | "Tiff" | "Ico" | "Svg";
+export type TraceMode = "Mono" | "Color";
+export interface TraceSpec { mode: TraceMode; colors: number; remove_background: boolean }
 export type FitMode = "Contain" | "Cover" | "Stretch";
 
 /** Mirrors vdesigner_core::Step, which serde serialises as an externally tagged enum. */
@@ -13,7 +15,7 @@ export type Step =
 
 export interface Job {
   steps: Step[];
-  output: { format: OutputFormat; quality: number; lossless: boolean };
+  output: { format: OutputFormat; quality: number; lossless: boolean; trace: TraceSpec };
 }
 
 export interface EditorSettings {
@@ -28,6 +30,9 @@ export interface EditorSettings {
   saturation: number;
   format: OutputFormat;
   quality: number;
+  traceMode: TraceMode;
+  traceColors: number;
+  removeBackground: boolean;
 }
 
 const LOSSLESS_FORMATS: OutputFormat[] = ["Png", "Tiff", "Ico"];
@@ -71,6 +76,11 @@ export function buildJob(settings: EditorSettings): Job {
       format: settings.format,
       quality: settings.quality,
       lossless: LOSSLESS_FORMATS.includes(settings.format),
+      trace: {
+        mode: settings.traceMode,
+        colors: settings.traceColors,
+        remove_background: settings.removeBackground,
+      },
     },
   };
 }

@@ -1,8 +1,11 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Editor } from "./Editor";
-import { api } from "../api";
+import { api, type PreviewResult, type SvgPreview } from "../api";
+import { formatBytes } from "../format";
+
+vi.mock("@tauri-apps/plugin-clipboard-manager", () => ({ writeText: vi.fn() }));
 
 vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
@@ -11,6 +14,7 @@ vi.mock("../api", async () => {
     api: {
       openImage: vi.fn(),
       preview: vi.fn(),
+      previewSvg: vi.fn(),
       estimate: vi.fn(),
       export: vi.fn(),
       onExportProgress: vi.fn(),
@@ -20,6 +24,7 @@ vi.mock("../api", async () => {
 
 const openImage = vi.mocked(api.openImage);
 const preview = vi.mocked(api.preview);
+const previewSvg = vi.mocked(api.previewSvg);
 const estimate = vi.mocked(api.estimate);
 const exportFile = vi.mocked(api.export);
 const onExportProgress = vi.mocked(api.onExportProgress);
@@ -175,5 +180,105 @@ describe("Editor", () => {
     render(<Editor onOpenFile={async () => "C:/temp/hero.jpg"} onPickDirectory={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: /abrir imagem/i }));
     await waitFor(() => expect(screen.getByLabelText(/altura/i)).toBeDisabled());
+  });
+
+  const open = async (isVector = false) => {
+    openImage.mockResolvedValue({
+      width: 800, height: 400, file_stem: "hero", preview_png_base64: "AAA", is_vector: isVector,
+    });
+    render(<Editor onOpenFile={async () => "C:/temp/hero.jpg"} onPickDirectory={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /abrir imagem/i }));
+    await screen.findByLabelText("Formato de saída");
+  };
+  const pickSvg = () => userEvent.selectOptions(screen.getByLabelText("Formato de saída"), "Svg");
+  const src = () => screen.getByRole("img").getAttribute("src");
+  const deferred = <T,>() => {
+    let resolve!: (v: T) => void;
+    const promise = new Promise<T>((r) => { resolve = r; });
+    return { promise, resolve };
+  };
+  const png = (b: string): PreviewResult => ({ png_base64: b, width: 1, height: 1 });
+
+  it("oferece SVG (vetorizado) no formato de saída", async () => {
+    await open();
+    expect(screen.getByRole("option", { name: "SVG (vetorizado)" })).toBeEnabled();
+  });
+
+  it("desabilita SVG quando a imagem aberta já é SVG", async () => {
+    await open(true);
+    expect(screen.getByRole("option", { name: "SVG (vetorizado)" })).toBeDisabled();
+  });
+
+  it("usa a prévia vetorial e mostra o tamanho exato do SVG", async () => {
+    previewSvg.mockResolvedValue({ svg: "<svg>" + "a".repeat(1234 - 11) + "</svg>" });
+    await open();
+    estimate.mockClear();
+    await pickSvg();
+    expect(await screen.findByText(`Tamanho ${formatBytes(1234)}`)).toBeInTheDocument();
+    const job = previewSvg.mock.calls[0][0];
+    expect(job.output.format).toBe("Svg");
+    expect(job.output.trace).toEqual({ mode: "Color", colors: 8, remove_background: true });
+    expect(estimate).not.toHaveBeenCalled();
+    expect(screen.queryByText(/estimado/)).toBeNull();
+    expect(src()).toMatch(/^data:image\/svg\+xml/);
+  });
+
+  it("mostra vetorizando… enquanto a prévia vetorial não chega", async () => {
+    const d = deferred<SvgPreview>();
+    previewSvg.mockReturnValue(d.promise);
+    await open();
+    await pickSvg();
+    expect(await screen.findByRole("status")).toHaveTextContent("vetorizando…");
+    d.resolve({ svg: "<svg/>" });
+    await waitFor(() => expect(screen.queryByText("vetorizando…")).toBeNull());
+  });
+
+  it("desabilita Copiar código SVG até a prévia nova chegar", async () => {
+    const second = deferred<SvgPreview>();
+    previewSvg.mockResolvedValueOnce({ svg: "<svg/>" }).mockReturnValueOnce(second.promise);
+    await open();
+    await pickSvg();
+    const copy = () => screen.getByRole("button", { name: "Copiar código SVG" });
+    await waitFor(() => expect(copy()).toBeEnabled());
+    fireEvent.change(screen.getByLabelText(/^Cores/), { target: { value: "5" } });
+    await waitFor(() => expect(copy()).toBeDisabled());
+    second.resolve({ svg: "<svg>2</svg>" });
+    await waitFor(() => expect(copy()).toBeEnabled());
+  });
+
+  it("ignora uma prévia antiga que chega depois da nova", async () => {
+    const a = deferred<PreviewResult>();
+    const b = deferred<PreviewResult>();
+    await open();
+    preview.mockReset();
+    preview.mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise);
+    fireEvent.change(screen.getByLabelText(/nitidez/i), { target: { value: "1" } });
+    await waitFor(() => expect(preview).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText(/nitidez/i), { target: { value: "2" } });
+    await waitFor(() => expect(preview).toHaveBeenCalledTimes(2));
+    b.resolve(png("BBB"));
+    await waitFor(() => expect(src()).toContain("BBB"));
+    a.resolve(png("AAAOLD"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(src()).toContain("BBB");
+  });
+
+  it("mantém processando… quando a prévia antiga chega antes da nova", async () => {
+    const a = deferred<PreviewResult>();
+    const b = deferred<PreviewResult>();
+    await open();
+    preview.mockReset();
+    preview.mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise);
+    fireEvent.change(screen.getByLabelText(/nitidez/i), { target: { value: "1" } });
+    await waitFor(() => expect(preview).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText(/nitidez/i), { target: { value: "2" } });
+    await waitFor(() => expect(preview).toHaveBeenCalledTimes(2));
+    a.resolve(png("OLDOLD"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByText("processando…")).toBeInTheDocument();
+    expect(src()).not.toContain("OLDOLD");
+    b.resolve(png("NEWNEW"));
+    await waitFor(() => expect(src()).toContain("NEWNEW"));
+    await waitFor(() => expect(screen.queryByText("processando…")).toBeNull());
   });
 });

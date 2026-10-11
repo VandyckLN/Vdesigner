@@ -3,6 +3,7 @@ import type { EditorSettings, OutputFormat } from "../api";
 interface QualityControlsProps {
   settings: EditorSettings;
   onChange: (next: EditorSettings) => void;
+  isVector: boolean;
 }
 
 const FORMATS: { value: OutputFormat; label: string }[] = [
@@ -12,11 +13,12 @@ const FORMATS: { value: OutputFormat; label: string }[] = [
   { value: "Jpeg", label: "JPG" },
   { value: "Tiff", label: "TIFF" },
   { value: "Ico", label: "ICO (até 256px)" },
+  { value: "Svg", label: "SVG (vetorizado)" },
 ];
 
 const LOSSY: OutputFormat[] = ["WebP", "Avif", "Jpeg"];
 
-export function QualityControls({ settings, onChange }: QualityControlsProps) {
+export function QualityControls({ settings, onChange, isVector }: QualityControlsProps) {
   const slider = (
     id: string,
     label: string,
@@ -59,7 +61,7 @@ export function QualityControls({ settings, onChange }: QualityControlsProps) {
         onChange={(e) => onChange({ ...settings, format: e.target.value as OutputFormat })}
       >
         {FORMATS.map((f) => (
-          <option key={f.value} value={f.value}>
+          <option key={f.value} value={f.value} disabled={f.value === "Svg" && isVector}>
             {f.label}
           </option>
         ))}
