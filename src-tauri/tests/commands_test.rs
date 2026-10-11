@@ -117,24 +117,36 @@ fn svg_preview_is_the_text_the_export_writes() {
 
 #[test]
 fn svg_preview_of_an_embedded_photo_is_the_text_the_export_writes() {
-    let to_32 = vdesigner_core::Step::Resize(vdesigner_core::ResizeSpec {
-        width: Some(32),
-        height: None,
-        fit: vdesigner_core::FitMode::Contain,
-        pad_color: [0, 0, 0, 0],
-    });
-    for (steps, side) in [(vec![], 64), (vec![to_32], 32)] {
+    let resize = |width, height| {
+        vdesigner_core::Step::Resize(vdesigner_core::ResizeSpec {
+            width: Some(width),
+            height,
+            fit: vdesigner_core::FitMode::Contain,
+            pad_color: [0, 0, 0, 0],
+        })
+    };
+    // (steps, size, picture for the opaque input). Reducing to 32 keeps the
+    // source resolution, enlarging to 96 resamples at the working size, and a
+    // 32x16 box pads the 64x64 square with clear bands, so even the opaque
+    // input goes as PNG.
+    let cases = [
+        (vec![], (64, 64), "image/jpeg"),
+        (vec![resize(32, None)], (32, 32), "image/jpeg"),
+        (vec![resize(96, None)], (96, 96), "image/jpeg"),
+        (vec![resize(32, Some(16))], (32, 16), "image/png"),
+    ];
+    for (steps, (w, h), opaque) in cases {
         for (bytes, mime) in [
-            (two_color_png(), "image/jpeg"),
+            (two_color_png(), opaque),
             (one_clear_pixel_png(), "image/png"),
         ] {
-            let case = format!("{mime}, {side} px");
+            let case = format!("{mime}, {w}x{h}");
             let mut job = svg_job(vdesigner_core::OutputFormat::Svg);
             job.output.trace.mode = vdesigner_core::TraceMode::Embed;
             job.steps = steps.clone();
             let preview = vdesigner::commands::svg_preview(&bytes, &job, &|| false).unwrap();
             assert!(
-                preview.contains(&format!(" width=\"{side}\" height=\"{side}\"")),
+                preview.contains(&format!(" width=\"{w}\" height=\"{h}\"")),
                 "{case}"
             );
             assert!(
