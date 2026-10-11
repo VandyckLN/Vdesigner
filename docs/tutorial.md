@@ -51,6 +51,32 @@ Os três filtros são independentes, e a prévia mostra o efeito ao vivo:
   comprimido. Em excesso, apaga detalhe fino.
 - **Brilho, contraste e saturação**, de −1 a 1. Zero deixa como está.
 
+### Vetorizar um logo, ícone ou assinatura
+
+O caminho inverso: abra um bitmap e escolha **SVG (vetorizado)** no formato de
+saída. Há dois modos.
+
+- **Cores** serve para logo e ilustração. O número de cores é um teto, não uma
+  meta: um logo de 4 cores sai igual com 8. **Remover fundo** torna transparente
+  a cor da borda em toda a imagem, inclusive dentro das letras.
+- **Uma cor** serve para ícone e assinatura. O desenho sai em `currentColor`,
+  que herda a cor do texto no site. **Copiar código SVG** leva o código pronto
+  para colar no HTML.
+
+O tamanho mostrado para o SVG é exato, não estimativa.
+
+O desenho é calculado na resolução da imagem aberta, de 512 a 4096 px. O
+tamanho de exportação só muda `width` e `height`: um ícone exportado a 24 px
+vem do logo inteiro, não de uma miniatura. Por isso vale partir do maior
+arquivo que houver. Abaixo de uns 100 px o contorno sai grosseiro, e um detalhe
+de até 2 px pode sumir.
+
+Quanto demora: logo de até 2000 px em menos de 2 s, de 4096 px em uns 6 s, foto
+grande em até 40 s. A janela não trava. Foto vira pôster de poucas cores e
+arquivo de vários MB: para foto, use WebP ou AVIF.
+
+Um SVG aberto não pode ser vetorizado de novo.
+
 ### Transformar SVG em bitmap
 
 Abra o SVG e exporte no tamanho que precisar. Como o vetor é desenhado na

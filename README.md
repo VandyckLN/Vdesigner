@@ -31,6 +31,10 @@ brilho, contraste e saturação de −1 a 1.
 **Rasterizar SVG.** Vetor entra e sai como bitmap em qualquer dimensão, sem
 perder definição na subida.
 
+**Vetorizar.** Bitmap vira SVG em dois modos: Cores, para logo e ilustração, e
+Uma cor, para ícone e assinatura, com `currentColor`. O desenho sai da
+resolução da imagem aberta, até 4096 px, e há botão para copiar o código SVG.
+
 **Prever antes de gastar.** A prévia recalcula ao vivo enquanto você mexe nos
 controles, e a faixa de dados mostra a estimativa de tamanho do arquivo final.
 Exportações longas reportam progresso por etapa.
@@ -56,13 +60,13 @@ movem um pixel por vez; `Esc` cancela sem mexer na área de transferência.
 
 | Entrada | Saída |
 |---|---|
-| JPG, PNG, WebP, GIF, BMP, TIFF, SVG | WebP, AVIF, PNG, JPG, TIFF, ICO |
+| JPG, PNG, WebP, GIF, BMP, TIFF, SVG | WebP, AVIF, PNG, JPG, TIFF, ICO, SVG (vetorizado) |
 
 ## Tecnologias
 
 | Camada | O que é usado |
 |---|---|
-| Motor de imagem | Rust — `image`, `fast_image_resize` (Lanczos3), `imageproc`, `resvg` |
+| Motor de imagem | Rust — `image`, `fast_image_resize` (Lanczos3), `imageproc`, `resvg`, `visioncortex` (vetorização) |
 | Codificadores | `webp`, `ravif` (AVIF, com rotinas em assembly via NASM) |
 | Aplicação | Tauri 2 — janela nativa sobre o WebView2 do Windows |
 | Interface | React 18, TypeScript, Vite |
@@ -130,6 +134,10 @@ um lançamento.
 
 Elementos `<text>` de SVG ainda não são desenhados, porque o carregamento de
 fontes do sistema não foi ligado. Um SVG com texto rasteriza sem ele.
+
+Vetorizar foto dá pôster de poucas cores e arquivo de vários MB: para foto, use
+WebP ou AVIF. Imagem abaixo de uns 100 px vetoriza com contorno grosseiro, e um
+detalhe de até 2 px pode sumir. Parta do maior arquivo que tiver.
 
 O empacotamento hoje é só para Windows. O motor em si não tem nada preso à
 plataforma, e o Tauri suporta Linux e macOS — falta o trabalho de build e teste.

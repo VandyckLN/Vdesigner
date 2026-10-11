@@ -27,6 +27,17 @@ export function Guide() {
           Entra como vetor e sai como bitmap em qualquer tamanho. Texto dentro do SVG ainda não é
           desenhado: converta em contorno antes.
         </dd>
+        <dt>Vetorizar (bitmap para SVG)</dt>
+        <dd>
+          Escolha SVG (vetorizado) no formato de saída. Cores serve para logo e ilustração: o número
+          é o teto de cores, e Remover fundo torna transparente a cor da borda em toda a imagem,
+          inclusive dentro das letras. Uma cor serve para ícone e assinatura e sai em currentColor,
+          que herda a cor do texto no site. Copiar código SVG leva o código pronto para colar no
+          HTML. O desenho sai da resolução da imagem aberta, até 4096 px, mesmo que você exporte
+          pequeno: parta do maior arquivo que tiver. Abaixo de uns 100 px o contorno sai grosseiro,
+          e imagem grande leva alguns segundos. Foto vira pôster de poucas cores e arquivo de vários
+          MB: para foto, use WebP ou AVIF.
+        </dd>
         <dt>Prévia e tamanho</dt>
         <dd>
           A prévia muda enquanto você mexe, e a estimativa mostra quanto o arquivo vai pesar.
