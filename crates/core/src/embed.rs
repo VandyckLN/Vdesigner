@@ -65,8 +65,8 @@ pub(crate) fn embed_svg(
     let end = "\"/>\n</svg>\n";
     // Base64 takes 4 characters for every 3 bytes, so this is the final
     // length, and the picture is encoded straight into the SVG, in one copy.
-    let data = picture.len().div_ceil(3) * 4;
-    let mut out = String::with_capacity(svg.len() + image.len() + data + end.len());
+    let encoded_len = picture.len().div_ceil(3) * 4;
+    let mut out = String::with_capacity(svg.len() + image.len() + encoded_len + end.len());
     out.push_str(&svg);
     out.push_str(&image);
     STANDARD.encode_string(&picture, &mut out);
