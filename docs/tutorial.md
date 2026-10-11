@@ -61,7 +61,8 @@ quatro modos.
   se você ampliar além da resolução original. A **Compressão** vale para essa
   foto como vale para um JPG: um número menor deixa o arquivo menor e perde mais
   detalhe. Se a imagem tiver qualquer pixel transparente, ela vai em PNG: sem
-  perda, mais pesada, e a Compressão não muda nada.
+  perda, mais pesada, e a Compressão não muda nada. Contam também as faixas
+  transparentes que o Contain acrescenta quando o alvo tem outra proporção.
 - **Foto em vetor** transforma a foto em formas, que você edita num programa de
   vetor. O preço é a cara de pintura: pele vira mancha chapada, e textura fina,
   como poro, barba e trama de tecido, some. O fundo fica sempre. **Detalhe**
