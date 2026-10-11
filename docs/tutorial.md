@@ -51,14 +51,22 @@ Os três filtros são independentes, e a prévia mostra o efeito ao vivo:
   comprimido. Em excesso, apaga detalhe fino.
 - **Brilho, contraste e saturação**, de −1 a 1. Zero deixa como está.
 
-### Vetorizar uma foto, um logo, um ícone ou uma assinatura
+### Transformar uma foto, um logo, um ícone ou uma assinatura em SVG
 
-O caminho inverso: abra um bitmap e escolha **SVG (vetorizado)** no formato de
-saída. Há três modos.
+O caminho inverso: abra um bitmap e escolha **SVG** no formato de saída. Há
+quatro modos.
 
-- **Foto (fiel)** é o padrão e serve para foto. Guarda as nuances em vez de
-  achatar em poucas cores, e o fundo fica sempre. **Detalhe** escolhe entre
-  Normal, Alto e Máximo: mais detalhe, arquivo maior e espera maior.
+- **Foto original** é o padrão e serve para foto. Guarda a própria foto dentro
+  do SVG: fica igual à original e leve, mas não vira formas editáveis, e pixela
+  se você ampliar além da resolução original. A **Compressão** vale para essa
+  foto como vale para um JPG: um número menor deixa o arquivo menor e perde mais
+  detalhe. Se a imagem tiver qualquer pixel transparente, ela vai em PNG: sem
+  perda, mais pesada, e a Compressão não muda nada.
+- **Foto em vetor** transforma a foto em formas, que você edita num programa de
+  vetor. O preço é a cara de pintura: pele vira mancha chapada, e textura fina,
+  como poro, barba e trama de tecido, some. O fundo fica sempre. **Detalhe**
+  escolhe entre Normal, Alto e Máximo: mais detalhe, arquivo maior e espera
+  maior.
 - **Cores** serve para logo e ilustração. O número de cores é um teto, não uma
   meta: um logo de 4 cores sai igual com 8. **Remover fundo** torna transparente
   a cor da borda em toda a imagem, inclusive dentro das letras.
@@ -69,20 +77,32 @@ saída. Há três modos.
 
 O tamanho mostrado para o SVG é exato, não estimativa.
 
-O desenho é calculado na resolução da imagem aberta, de 512 a 4096 px. O
-tamanho de exportação só muda `width` e `height`: um ícone exportado a 24 px
-vem do logo inteiro, não de uma miniatura. Por isso vale partir do maior
-arquivo que houver. Abaixo de uns 100 px o contorno sai grosseiro, e um detalhe
-de até 2 px pode sumir.
+Nos modos que viram formas, o desenho é calculado na resolução da imagem
+aberta, de 512 a 4096 px. O tamanho de exportação só muda `width` e `height`:
+um ícone exportado a 24 px vem do logo inteiro, não de uma miniatura. Por isso
+vale partir do maior arquivo que houver. Abaixo de uns 100 px o contorno sai
+grosseiro, e um detalhe de até 2 px pode sumir.
+
+A Foto original segue a mesma regra, com uma diferença que pesa no arquivo: a
+foto guardada fica na resolução da imagem aberta, até 4096 px, e uma imagem
+pequena não é ampliada. Exportar com largura menor só muda `width` e `height`,
+então não deixa o SVG mais leve. Para pesar menos, baixe a Compressão, ou
+exporte antes um JPG no tamanho certo e abra esse JPG.
 
 Quanto demora: logo de até 2000 px em menos de 2 s, de 4096 px em uns 6 s, foto
 grande de 4096 px no modo Cores em até 40 s. A janela não trava.
 
-No modo Foto, uma foto de 1563 px leva uns 6,5 s e sai com 4,6 MB no Normal,
-uns 8 s e 5 MB no Alto, uns 14 s e 5,5 MB no Máximo. Foto fica fiel mas
-pesada; para site, WebP ou AVIF continua mais leve.
+Uma foto de 1563 px, guardada como PNG de 1,6 MB, medida em versão de release:
+na Foto original, com a Compressão em 82, o padrão, sai com 333 KB em menos de
+meio segundo; em 60, com 225 KB; em 95, com 650 KB. Na Foto em vetor, leva uns
+6 s e sai com 4,6 MB no Normal, uns 8 s e 5,1 MB no Alto, uns 11 s e 5,5 MB no
+Máximo.
 
-Um SVG aberto não pode ser vetorizado de novo.
+A Foto original pesa um terço a mais que a mesma foto num JPG, porque a foto
+vai escrita como texto dentro do SVG. Para foto em site, WebP ou AVIF continua
+mais leve. Use SVG quando o destino pede SVG.
+
+Com um SVG aberto, a saída SVG fica desabilitada.
 
 ### Transformar SVG em bitmap
 

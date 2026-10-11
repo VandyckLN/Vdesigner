@@ -31,10 +31,13 @@ brilho, contraste e saturação de −1 a 1.
 **Rasterizar SVG.** Vetor entra e sai como bitmap em qualquer dimensão, sem
 perder definição na subida.
 
-**Vetorizar.** Bitmap vira SVG em três modos: Foto (fiel), o padrão, com três
-níveis de detalhe; Cores, para logo e ilustração; e Uma cor, para ícone e
-assinatura, com `currentColor`. O desenho sai da
-resolução da imagem aberta, até 4096 px, e há botão para copiar o código SVG.
+**Bitmap para SVG.** Quatro modos. Foto original, o padrão, guarda a própria
+foto dentro do SVG: fica igual à original e leve, mas não vira formas editáveis
+e pixela se ampliada além da resolução original. Foto em vetor transforma a
+foto em formas, com três níveis de detalhe, e fica com cara de pintura. Cores
+serve para logo e ilustração, e Uma cor, para ícone e assinatura, com
+`currentColor`. Tudo parte da resolução da imagem aberta, até 4096 px, e há
+botão para copiar o código SVG.
 
 **Prever antes de gastar.** A prévia recalcula ao vivo enquanto você mexe nos
 controles, e a faixa de dados mostra a estimativa de tamanho do arquivo final.
@@ -61,7 +64,7 @@ movem um pixel por vez; `Esc` cancela sem mexer na área de transferência.
 
 | Entrada | Saída |
 |---|---|
-| JPG, PNG, WebP, GIF, BMP, TIFF, SVG | WebP, AVIF, PNG, JPG, TIFF, ICO, SVG (vetorizado) |
+| JPG, PNG, WebP, GIF, BMP, TIFF, SVG | WebP, AVIF, PNG, JPG, TIFF, ICO, SVG |
 
 ## Tecnologias
 
@@ -71,7 +74,7 @@ movem um pixel por vez; `Esc` cancela sem mexer na área de transferência.
 | Codificadores | `webp`, `ravif` (AVIF, com rotinas em assembly via NASM) |
 | Aplicação | Tauri 2 — janela nativa sobre o WebView2 do Windows |
 | Interface | React 18, TypeScript, Vite |
-| Testes | 275 no total — 160 em Rust (`cargo test`), 99 na interface (Vitest, Testing Library) e 16 nos scripts de release (`node:test`) |
+| Testes | 353 no total — 213 em Rust (`cargo test`), 124 na interface (Vitest, Testing Library) e 16 nos scripts de release (`node:test`) |
 | CI | GitHub Actions — `rustfmt`, `clippy` com avisos como erro, e as três suítes |
 
 O motor vive em `crates/core` e é uma biblioteca pura: não conhece Tauri, não
@@ -136,10 +139,16 @@ um lançamento.
 Elementos `<text>` de SVG ainda não são desenhados, porque o carregamento de
 fontes do sistema não foi ligado. Um SVG com texto rasteriza sem ele.
 
-Vetorizar foto no modo Foto leva segundos e pesa MB: uma foto de 1563 px leva
-uns 6,5 s e 4,6 MB no Normal, 8 s e 5 MB no Alto, 14 s e 5,5 MB no Máximo.
-Foto fica fiel mas pesada; para site, WebP ou AVIF continua mais leve. Imagem abaixo de uns 100 px vetoriza com contorno grosseiro, e um
-detalhe de até 2 px pode sumir. Parta do maior arquivo que tiver.
+A Foto original, o padrão do SVG, é uma foto dentro do SVG: uma foto de
+1563 px sai com 333 KB em menos de meio segundo, mas não vira formas editáveis,
+pixela se ampliada além da resolução original e pesa um terço a mais que a
+mesma foto num JPG. Exportar pequeno não a deixa mais leve, porque ela guarda a
+resolução da imagem aberta, até 4096 px. A Foto em vetor vira formas, mas fica
+com cara de pintura e pesa MB: a mesma foto leva uns 6 s e 4,6 MB no Normal,
+8 s e 5,1 MB no Alto, 11 s e 5,5 MB no Máximo. Para foto em site, WebP ou AVIF
+continua mais leve. Imagem abaixo de uns 100 px vetoriza com contorno
+grosseiro, e um detalhe de até 2 px pode sumir. Parta do maior arquivo que
+tiver.
 
 O empacotamento hoje é só para Windows. O motor em si não tem nada preso à
 plataforma, e o Tauri suporta Linux e macOS — falta o trabalho de build e teste.
