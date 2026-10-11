@@ -74,7 +74,7 @@ movem um pixel por vez; `Esc` cancela sem mexer na área de transferência.
 | Codificadores | `webp`, `ravif` (AVIF, com rotinas em assembly via NASM) |
 | Aplicação | Tauri 2 — janela nativa sobre o WebView2 do Windows |
 | Interface | React 18, TypeScript, Vite |
-| Testes | 353 no total — 213 em Rust (`cargo test`), 124 na interface (Vitest, Testing Library) e 16 nos scripts de release (`node:test`) |
+| Testes | 354 no total — 214 em Rust (`cargo test`), 124 na interface (Vitest, Testing Library) e 16 nos scripts de release (`node:test`) |
 | CI | GitHub Actions — `rustfmt`, `clippy` com avisos como erro, e as três suítes |
 
 O motor vive em `crates/core` e é uma biblioteca pura: não conhece Tauri, não
