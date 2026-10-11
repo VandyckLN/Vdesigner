@@ -35,8 +35,8 @@ export function TraceControls({ settings, onChange, svgCode, onError }: TraceCon
           <small>
             Guarda a própria foto dentro do SVG: fica igual à original e leve, mas não vira formas
             editáveis e pixela se você ampliar além da resolução original. A Compressão acima vale
-            para essa foto. Com transparência, ela vai em PNG: sem perda, mais pesada, e aí a
-            Compressão não muda nada.
+            para essa foto. Com transparência, inclusive as faixas que o encaixe Caber dentro
+            acrescenta, ela vai em PNG: sem perda, mais pesada, e aí a Compressão não muda nada.
           </small>
         );
       case "Photo":

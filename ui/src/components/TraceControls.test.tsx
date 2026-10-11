@@ -49,7 +49,7 @@ describe("TraceControls", () => {
     expect(screen.queryByLabelText("Remover fundo")).toBeNull();
     expect(screen.getByText(/não vira formas editáveis/)).toBeInTheDocument();
     expect(screen.getByText(/pixela/)).toBeInTheDocument();
-    expect(screen.getByText(/Com transparência, ela vai em PNG: sem perda, mais pesada, e aí a Compressão não muda nada/)).toBeInTheDocument();
+    expect(screen.getByText(/Com transparência, inclusive as faixas que o encaixe Caber dentro acrescenta, ela vai em PNG: sem perda, mais pesada, e aí a Compressão não muda nada/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copiar código SVG" })).toBeEnabled();
   });
 
