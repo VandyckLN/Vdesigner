@@ -16,4 +16,7 @@ pub enum CoreError {
 
     #[error("cor inválida: {0}")]
     InvalidColor(String),
+
+    #[error("operação cancelada")]
+    Cancelled,
 }

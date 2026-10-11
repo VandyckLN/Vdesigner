@@ -9,6 +9,7 @@ mod job;
 mod palette;
 mod resize;
 mod svg;
+mod trace;
 
 pub use color::{
     format, from_oklch, gradient, harmonies, parse_hex, ramp, to_oklch, Color, ColorFormat,
@@ -26,3 +27,4 @@ pub use palette::{
 };
 pub use resize::{resize, FitMode, ResizeSpec, MAX_SIDE};
 pub use svg::{is_svg, rasterize_svg};
+pub use trace::{trace_svg, TraceMode, TraceSpec, TRACE_MAX_SIDE, TRACE_MIN_SIDE};

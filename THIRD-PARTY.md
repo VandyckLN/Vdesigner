@@ -19,6 +19,7 @@ full transitive dependency graph.
 | fast_image_resize | MIT OR Apache-2.0 |
 | imageproc | MIT |
 | resvg | Apache-2.0 OR MIT |
+| visioncortex | MIT OR Apache-2.0 |
 
 ### `src-tauri` dependencies (`src-tauri/Cargo.toml`)
 

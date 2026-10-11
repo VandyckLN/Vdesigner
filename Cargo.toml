@@ -22,3 +22,7 @@ fast_image_resize = { version = "5", features = ["image"] }
 # feature list above and drag in a second, duplicated AVIF encoder.
 imageproc = { version = "0.25", default-features = false, features = ["rayon"] }
 resvg = "0.45"
+visioncortex = "=0.9.3"
+
+[profile.dev.package.visioncortex]
+opt-level = 3
