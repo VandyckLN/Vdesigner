@@ -27,12 +27,12 @@ para favicon.
 
 Informe a largura e a altura do alvo e escolha o modo:
 
-- **Contain**: a imagem inteira cabe no alvo e a sobra é preenchida. Nada é
-  cortado. Serve para logo e produto.
-- **Cover**: a imagem preenche o alvo e o excedente é cortado a partir do
-  centro. Serve para capa, banner e miniatura de card.
-- **Stretch**: ignora a proporção e deforma. Fica travado até você destravar,
-  porque quase nunca é o que você quer.
+- **Caber dentro, com preenchimento**: a imagem inteira cabe no alvo e a sobra
+  é preenchida. Nada é cortado. Serve para logo e produto.
+- **Preencher e recortar**: a imagem preenche o alvo e o excedente é cortado a
+  partir do centro. Serve para capa, banner e miniatura de card.
+- **Esticar (distorce)**: ignora a proporção e deforma. Fica travado até você
+  destravar, porque quase nunca é o que você quer.
 
 O limite é de 16384 px por lado. A reamostragem é Lanczos3, que mantém a
 nitidez ao reduzir.
@@ -62,7 +62,8 @@ quatro modos.
   foto como vale para um JPG: um número menor deixa o arquivo menor e perde mais
   detalhe. Se a imagem tiver qualquer pixel transparente, ela vai em PNG: sem
   perda, mais pesada, e a Compressão não muda nada. Contam também as faixas
-  transparentes que o Contain acrescenta quando o alvo tem outra proporção.
+  transparentes que o Caber dentro acrescenta quando o alvo tem outra
+  proporção.
 - **Foto em vetor** transforma a foto em formas, que você edita num programa de
   vetor. O preço é a cara de pintura: pele vira mancha chapada, e textura fina,
   como poro, barba e trama de tecido, some. O fundo fica sempre. **Detalhe**
@@ -214,8 +215,8 @@ direto, sem copiar hex de um print.
 e cole. Se a cor for ficar no projeto, use **Usar** antes de fechar o app.
 
 **Otimizar as imagens de uma página.** Para cada imagem: abra, aplique
-**Cover** no tamanho do componente (em dobro para telas de alta densidade),
-exporte em WebP e confira a estimativa antes de exportar.
+**Preencher e recortar** no tamanho do componente (em dobro para telas de alta
+densidade), exporte em WebP e confira a estimativa antes de exportar.
 
 ---
 

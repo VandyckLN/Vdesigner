@@ -13,8 +13,9 @@ export function Guide() {
         </dd>
         <dt>Redimensionar</dt>
         <dd>
-          Contain cabe no alvo e preenche a sobra, sem cortar. Cover preenche e corta o excesso pelo
-          centro. Stretch deforma e fica travado até você destravar. Para telas de alta densidade,
+          Caber dentro, com preenchimento põe a imagem inteira no alvo e preenche a sobra, sem
+          cortar. Preencher e recortar preenche o alvo e corta o excesso pelo centro. Esticar
+          (distorce) deforma e fica travado até você destravar. Para telas de alta densidade,
           exporte com o dobro do tamanho que a imagem ocupa no CSS.
         </dd>
         <dt>Melhorar</dt>
@@ -32,7 +33,7 @@ export function Guide() {
           Escolha SVG no formato de saída. Foto original é o padrão: guarda a própria foto dentro do
           SVG, igual à original e leve, mas ela não vira formas editáveis e pixela se você ampliar
           além da resolução original. Uma foto de 1563 px sai com 333 KB em menos de meio segundo. A
-          Compressão vale para essa foto; com transparência, inclusive as faixas que o Contain
+          Compressão vale para essa foto; com transparência, inclusive as faixas que o Caber dentro
           acrescenta, ela vai em PNG, sem perda e mais pesada, e a Compressão não muda nada.
           Exportar pequeno não deixa a Foto original mais leve, porque ela guarda a foto no tamanho
           da imagem aberta, até 4096 px: para pesar menos, baixe a Compressão ou abra uma versão

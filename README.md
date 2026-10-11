@@ -19,10 +19,11 @@ nessa checagem é só o número da versão.
 **Converter.** Entre os formatos da tabela abaixo, com controle de qualidade e
 modo sem perdas onde o formato suporta.
 
-**Redimensionar.** Reamostragem Lanczos3 em três modos: `Contain` cabe dentro do
-alvo e preenche a sobra sem nunca cortar, `Cover` preenche e corta o excedente
-pelo centro, `Stretch` ignora a proporção e só fica acessível quando você
-destrava. Limite de 16384 px por lado.
+**Redimensionar.** Reamostragem Lanczos3 em três modos: Caber dentro, com
+preenchimento (`Contain`), põe a imagem inteira no alvo e preenche a sobra sem
+nunca cortar; Preencher e recortar (`Cover`) preenche o alvo e corta o
+excedente pelo centro; Esticar (distorce) (`Stretch`) ignora a proporção e só
+fica acessível quando você destrava. Limite de 16384 px por lado.
 
 **Melhorar.** Três filtros independentes: nitidez por máscara de desfoque
 (intensidade 0 a 5 e raio próprio), redução de ruído por mediana, e ajuste de
