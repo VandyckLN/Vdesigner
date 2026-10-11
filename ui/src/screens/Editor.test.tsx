@@ -281,4 +281,32 @@ describe("Editor", () => {
     await waitFor(() => expect(src()).toContain("NEWNEW"));
     await waitFor(() => expect(screen.queryByText("processando…")).toBeNull());
   });
+
+  it("não mostra Tamanho exato antes da prévia SVG chegar", async () => {
+    estimate.mockResolvedValue({ bytes: 5000 });
+    const d = deferred<SvgPreview>();
+    previewSvg.mockReturnValue(d.promise);
+    await open();
+    await screen.findByText(/Tamanho estimado/);
+    await pickSvg();
+    await waitFor(() => expect(previewSvg).toHaveBeenCalled());
+    expect(screen.queryByText(/^Tamanho /)).toBeNull();
+    d.resolve({ svg: "<svg/>" });
+    expect(await screen.findByText(/^Tamanho /)).toBeInTheDocument();
+  });
+
+  it("uma estimativa raster tardia não sobrescreve o tamanho do SVG", async () => {
+    const late = deferred<{ bytes: number }>();
+    await open();
+    estimate.mockReset();
+    estimate.mockReturnValue(late.promise);
+    fireEvent.change(screen.getByLabelText(/nitidez/i), { target: { value: "1" } });
+    await waitFor(() => expect(estimate).toHaveBeenCalled());
+    previewSvg.mockResolvedValue({ svg: "<svg>1234</svg>" });
+    await pickSvg();
+    await screen.findByText(`Tamanho ${formatBytes(15)}`);
+    late.resolve({ bytes: 999999 });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByText(`Tamanho ${formatBytes(15)}`)).toBeInTheDocument();
+  });
 });

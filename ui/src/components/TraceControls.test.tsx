@@ -48,6 +48,6 @@ describe("TraceControls", () => {
     render(<TraceControls settings={base} onChange={vi.fn()} svgCode="<svg/>" onError={onError} />);
     await userEvent.click(screen.getByRole("button", { name: "Copiar código SVG" }));
     await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(2));
-    expect(onError.mock.calls[1][0]).toMatch(/^Não foi possível copiar o código SVG/);
+    expect(onError).toHaveBeenLastCalledWith(expect.stringMatching(/^Não foi possível copiar o código SVG/));
   });
 });

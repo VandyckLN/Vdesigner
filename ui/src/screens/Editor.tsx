@@ -53,6 +53,7 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
   // Counts preview runs so a response that arrives after a newer run started
   // (or after the format changed) can be recognised and dropped.
   const previewRequest = useRef(0);
+  const lastFormat = useRef(DEFAULT_SETTINGS.format);
   const timer = useRef<number | null>(null);
   const estimateTimer = useRef<number | null>(null);
 
@@ -80,6 +81,12 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
     // A fresh run invalidates whatever SVG text was showing: copying must wait
     // for the preview that matches the current controls.
     setSvgCode(null);
+    // An estimate (raster) and an exact size (SVG) are different things: never
+    // let one be shown as the other after the format flips.
+    if (lastFormat.current !== settings.format) {
+      lastFormat.current = settings.format;
+      setEstimatedBytes(null);
+    }
 
     timer.current = window.setTimeout(async () => {
       setBusy(true);
@@ -100,6 +107,7 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
         // A superseded run's failure (including the backend's "cancelada")
         // belongs to a request nobody is waiting for any more.
         if (id !== previewRequest.current) return;
+        if (isSvg) setEstimatedBytes(null);
         setError(String(e));
       } finally {
         if (id === previewRequest.current) setBusy(false);
@@ -115,11 +123,13 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
     if (!image || settings.format === "Svg") return;
     if (estimateTimer.current !== null) window.clearTimeout(estimateTimer.current);
 
+    let stale = false;
     estimateTimer.current = window.setTimeout(async () => {
       try {
         const result = await api.estimate(buildJob(settings));
-        setEstimatedBytes(result.bytes);
+        if (!stale) setEstimatedBytes(result.bytes);
       } catch {
+        if (stale) return;
         // A failed estimate is not worth an error banner: the number simply
         // disappears until the next change produces one.
         setEstimatedBytes(null);
@@ -127,6 +137,7 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
     }, ESTIMATE_DEBOUNCE_MS);
 
     return () => {
+      stale = true;
       if (estimateTimer.current !== null) window.clearTimeout(estimateTimer.current);
     };
   }, [settings, image]);
