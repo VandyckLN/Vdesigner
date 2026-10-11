@@ -66,3 +66,61 @@ fn measures_the_reduction_against_the_longest_side() {
     // The portrait's height drives the cap, not its width.
     assert_eq!(extrapolate(1_000, 512, 1024, 512), 4_000);
 }
+
+fn two_color_png() -> Vec<u8> {
+    let img = image::RgbaImage::from_fn(64, 64, |x, _| {
+        if x < 32 {
+            image::Rgba([255, 0, 0, 255])
+        } else {
+            image::Rgba([0, 0, 255, 255])
+        }
+    });
+    let mut out = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut out, image::ImageFormat::Png).unwrap();
+    out.into_inner()
+}
+
+fn svg_job(format: vdesigner_core::OutputFormat) -> vdesigner_core::Job {
+    vdesigner_core::Job {
+        steps: vec![],
+        output: vdesigner_core::EncodeSpec {
+            format,
+            quality: 80,
+            lossless: false,
+            trace: vdesigner_core::TraceSpec::default(),
+        },
+    }
+}
+
+#[test]
+fn svg_preview_is_the_text_the_export_writes() {
+    let bytes = two_color_png();
+    let job = svg_job(vdesigner_core::OutputFormat::Svg);
+    let preview = vdesigner::commands::svg_preview(&bytes, &job, &|| false).unwrap();
+    let exported = vdesigner_core::run_job(&bytes, &job, &mut |_| {})
+        .unwrap()
+        .bytes;
+    assert_eq!(preview, String::from_utf8(exported).unwrap());
+}
+
+#[test]
+fn svg_preview_refuses_a_raster_format() {
+    let job = svg_job(vdesigner_core::OutputFormat::WebP);
+    let m = vdesigner::commands::svg_preview(&two_color_png(), &job, &|| false).unwrap_err();
+    assert!(m.contains("SVG"));
+}
+
+#[test]
+fn svg_preview_reports_a_superseded_trace_as_cancelled() {
+    let job = svg_job(vdesigner_core::OutputFormat::Svg);
+    let m = vdesigner::commands::svg_preview(&two_color_png(), &job, &|| true).unwrap_err();
+    assert!(m.contains("cancelada"));
+}
+
+#[test]
+fn the_svg_extension_is_svg() {
+    assert_eq!(
+        vdesigner::commands::extension_for(vdesigner_core::OutputFormat::Svg),
+        "svg"
+    );
+}

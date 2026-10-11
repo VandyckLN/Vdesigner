@@ -43,6 +43,7 @@ describe("Editor", () => {
       height: 1080,
       file_stem: "hero",
       preview_png_base64: "AAA",
+      is_vector: false,
     });
 
     render(<Editor onOpenFile={async () => "C:/temp/hero.jpg"} onPickDirectory={vi.fn()} />);
@@ -57,6 +58,7 @@ describe("Editor", () => {
       height: 400,
       file_stem: "hero",
       preview_png_base64: "AAA",
+      is_vector: false,
     });
 
     render(
@@ -80,12 +82,14 @@ describe("Editor", () => {
         height: 400,
         file_stem: "hero",
         preview_png_base64: "AAA",
+        is_vector: false,
       })
       .mockResolvedValueOnce({
         width: 640,
         height: 480,
         file_stem: "outra",
         preview_png_base64: "BBB",
+        is_vector: false,
       });
 
     render(
@@ -114,6 +118,7 @@ describe("Editor", () => {
       height: 400,
       file_stem: "hero",
       preview_png_base64: "AAA",
+      is_vector: false,
     });
     estimate.mockResolvedValue({ bytes: 2048 });
 
@@ -129,6 +134,7 @@ describe("Editor", () => {
       height: 400,
       file_stem: "hero",
       preview_png_base64: "AAA",
+      is_vector: false,
     });
 
     let emit: ((p: { current: number; total: number; label: string }) => void) | undefined;
@@ -163,6 +169,7 @@ describe("Editor", () => {
       height: 400,
       file_stem: "hero",
       preview_png_base64: "AAA",
+      is_vector: false,
     });
 
     render(<Editor onOpenFile={async () => "C:/temp/hero.jpg"} onPickDirectory={vi.fn()} />);

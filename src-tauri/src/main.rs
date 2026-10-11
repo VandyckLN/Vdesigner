@@ -17,6 +17,7 @@ fn main() {
             commands::open_image,
             commands::preview,
             commands::estimate,
+            commands::preview_svg,
             commands::export,
             commands::load_palette,
             commands::save_palette,

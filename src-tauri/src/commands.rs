@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, State};
 use vdesigner_core::{
     decode, format as format_color_value, harmonies, is_svg, parse_hex, ramp, rasterize_svg,
-    run_job, run_preview, ColorFormat, EncodeSpec, Job, OutputFormat, Palette,
+    run_job, run_job_cancellable, run_preview, ColorFormat, EncodeSpec, Job, OutputFormat, Palette,
 };
 
 const PREVIEW_MAX_SIDE: u32 = 2048;
@@ -28,6 +28,12 @@ pub struct ImageInfo {
     pub height: u32,
     pub file_stem: String,
     pub preview_png_base64: String,
+    pub is_vector: bool,
+}
+
+#[derive(Serialize)]
+pub struct SvgPreview {
+    pub svg: String,
 }
 
 #[derive(Serialize)]
@@ -80,6 +86,7 @@ pub fn open_image(path: String, session: State<Session>) -> CommandResult<ImageI
         height: image.height(),
         file_stem: file_stem.clone(),
         preview_png_base64: preview_png(&bytes)?,
+        is_vector: is_svg(&bytes),
     };
 
     *session
@@ -162,20 +169,55 @@ pub fn extrapolate(sample_bytes: u64, width: u32, height: u32, max_side: u32) ->
     (sample_bytes as f64 * ratio * ratio).round() as u64
 }
 
+/// Split out of the command so it can be tested without a Tauri runtime.
+pub fn svg_preview(
+    bytes: &[u8],
+    job: &Job,
+    superseded: &dyn Fn() -> bool,
+) -> Result<String, String> {
+    if job.output.format != OutputFormat::Svg {
+        return Err("a prévia vetorial só serve para SVG".to_string());
+    }
+    let output =
+        run_job_cancellable(bytes, job, &mut |_| {}, superseded).map_err(|e| e.to_string())?;
+    // The writer only emits ASCII, so a failure here is a bug worth surfacing.
+    String::from_utf8(output.bytes).map_err(|e| e.to_string())
+}
+
+/// `async` so the trace runs on the blocking pool: a sync command would hold
+/// the main thread and freeze the window.
 #[tauri::command]
-pub fn export(
+pub async fn preview_svg(job: Job, session: State<'_, Session>) -> CommandResult<SvgPreview> {
+    let bytes = {
+        let guard = session
+            .source
+            .lock()
+            .map_err(|_| "estado corrompido".to_string())?;
+        guard.as_ref().ok_or("nenhuma imagem aberta")?.bytes.clone()
+    };
+    let superseded = session.traces.begin();
+    let svg = tauri::async_runtime::spawn_blocking(move || svg_preview(&bytes, &job, &superseded))
+        .await
+        .map_err(|_| "a vetorização foi interrompida".to_string())??;
+    Ok(SvgPreview { svg })
+}
+
+#[tauri::command]
+pub async fn export(
     app: AppHandle,
     job: Job,
     output_dir: String,
     file_stem: String,
     overwrite: bool,
-    session: State<Session>,
+    session: State<'_, Session>,
 ) -> CommandResult<ExportResult> {
-    let guard = session
-        .source
-        .lock()
-        .map_err(|_| "estado corrompido".to_string())?;
-    let source = guard.as_ref().ok_or("nenhuma imagem aberta")?;
+    let bytes = {
+        let guard = session
+            .source
+            .lock()
+            .map_err(|_| "estado corrompido".to_string())?;
+        guard.as_ref().ok_or("nenhuma imagem aberta")?.bytes.clone()
+    };
 
     let extension = extension_for(job.output.format);
     let path = resolve_output_path(
@@ -186,28 +228,31 @@ pub fn export(
     )
     .map_err(|e| e.to_string())?;
 
-    // A failed emit must not fail the export: the file still gets written, and
-    // the UI simply stops hearing about the stages.
-    let output = run_job(&source.bytes, &job, &mut |p| {
-        let _ = app.emit(
-            EXPORT_PROGRESS_EVENT,
-            ExportProgress {
-                current: p.current,
-                total: p.total,
-                label: p.label.to_string(),
-            },
-        );
+    tauri::async_runtime::spawn_blocking(move || {
+        // A failed emit must not fail the export: the file still gets written,
+        // and the UI simply stops hearing about the stages.
+        let output = run_job(&bytes, &job, &mut |p| {
+            let _ = app.emit(
+                EXPORT_PROGRESS_EVENT,
+                ExportProgress {
+                    current: p.current,
+                    total: p.total,
+                    label: p.label.to_string(),
+                },
+            );
+        })
+        .map_err(|e| e.to_string())?;
+        let bytes_written = write_bytes(&path, &output.bytes).map_err(|e| e.to_string())?;
+        Ok(ExportResult {
+            path: path.display().to_string(),
+            bytes_written,
+        })
     })
-    .map_err(|e| e.to_string())?;
-    let bytes_written = write_bytes(&path, &output.bytes).map_err(|e| e.to_string())?;
-
-    Ok(ExportResult {
-        path: path.display().to_string(),
-        bytes_written,
-    })
+    .await
+    .map_err(|_| "a exportação foi interrompida".to_string())?
 }
 
-fn extension_for(format: OutputFormat) -> &'static str {
+pub fn extension_for(format: OutputFormat) -> &'static str {
     match format {
         OutputFormat::WebP => "webp",
         OutputFormat::Avif => "avif",

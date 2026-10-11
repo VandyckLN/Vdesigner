@@ -80,6 +80,11 @@ export interface ImageInfo {
   height: number;
   file_stem: string;
   preview_png_base64: string;
+  is_vector: boolean;
+}
+
+export interface SvgPreview {
+  svg: string;
 }
 
 export interface PreviewResult {
@@ -177,6 +182,7 @@ export const api = {
   openImage: (path: string) => invoke<ImageInfo>("open_image", { path }),
   preview: (job: Job) => invoke<PreviewResult>("preview", { job }),
   estimate: (job: Job) => invoke<EstimateResult>("estimate", { job }),
+  previewSvg: (job: Job) => invoke<SvgPreview>("preview_svg", { job }),
   export: (job: Job, outputDir: string, fileStem: string, overwrite: boolean) =>
     invoke<ExportResult>("export", { job, outputDir, fileStem, overwrite }),
   onExportProgress: (handler: (progress: ExportProgress) => void): Promise<UnlistenFn> =>
