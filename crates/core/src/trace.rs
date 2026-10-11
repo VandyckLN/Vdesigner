@@ -470,6 +470,14 @@ fn trace_color(
         Color::default()
     };
 
+    if labels.iter().all(Option::is_none) {
+        return Ok(Traced {
+            width: w,
+            height: h,
+            paths: Vec::new(),
+        });
+    }
+
     let mut image = ColorImage::new_w_h(wu, hu);
     for (i, label) in labels.iter().enumerate() {
         let c = match label {
@@ -480,13 +488,6 @@ fn trace_color(
             None => key,
         };
         image.set_pixel_at(i, &c);
-    }
-    if labels.iter().all(Option::is_none) {
-        return Ok(Traced {
-            width: w,
-            height: h,
-            paths: Vec::new(),
-        });
     }
 
     let config = RunnerConfig {
@@ -551,13 +552,15 @@ fn trace_mono(source: &RgbaImage, cancel: &dyn Fn() -> bool) -> Result<Traced, C
     };
     let (w, h) = (work.width() as usize, work.height() as usize);
     let opaque = |a: u8| a >= OPAQUE;
-    // Composited on white, after the opaque/transparent split.
+    // Composited on white: transparent pixels read as white, opaque ones
+    // blend their RGB over white by their own alpha.
     let luma = |c: Color| -> u8 {
-        if opaque(c.a) {
-            ((299 * c.r as u32 + 587 * c.g as u32 + 114 * c.b as u32) / 1000) as u8
-        } else {
-            255
+        if !opaque(c.a) {
+            return 255;
         }
+        let a = c.a as u32;
+        let over_white = |v: u8| (v as u32 * a + 255 * (255 - a) + 127) / 255;
+        ((299 * over_white(c.r) + 587 * over_white(c.g) + 114 * over_white(c.b)) / 1000) as u8
     };
 
     let frame: Vec<usize> = frame_indices(w, h).collect();
