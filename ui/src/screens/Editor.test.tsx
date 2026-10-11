@@ -253,6 +253,33 @@ describe("Editor", () => {
     expect(screen.getByLabelText("Detalhe")).toBeInTheDocument();
   });
 
+  it("guarda Detalhe, Cores e Remover fundo ao passar por todos os modos e voltar", async () => {
+    previewSvg.mockResolvedValue({ svg: "<svg/>" });
+    await open();
+    await pickSvg();
+    const mode = () => screen.getByLabelText("Modo");
+    await userEvent.selectOptions(mode(), "Photo");
+    await userEvent.selectOptions(screen.getByLabelText("Detalhe"), "Max");
+    await userEvent.selectOptions(mode(), "Color");
+    fireEvent.change(screen.getByLabelText(/^Cores/), { target: { value: "12" } });
+    const removeBackground = screen.getByLabelText("Remover fundo") as HTMLInputElement;
+    const removed = !removeBackground.checked;
+    await userEvent.click(removeBackground);
+    await userEvent.selectOptions(mode(), "Embed");
+    await waitFor(() => expect(previewSvg.mock.lastCall?.[0].output.trace.mode).toBe("Embed"));
+    expect(previewSvg.mock.lastCall?.[0].output.trace).toEqual({
+      mode: "Embed",
+      colors: 12,
+      remove_background: removed,
+      detail: "Max",
+    });
+    await userEvent.selectOptions(mode(), "Photo");
+    expect(screen.getByLabelText("Detalhe")).toHaveValue("Max");
+    await userEvent.selectOptions(mode(), "Color");
+    expect(screen.getByLabelText(/^Cores/)).toHaveValue("12");
+    expect(screen.getByLabelText("Remover fundo")).toHaveProperty("checked", removed);
+  });
+
   it("desabilita Copiar código SVG até a prévia nova chegar", async () => {
     const second = deferred<SvgPreview>();
     previewSvg.mockResolvedValueOnce({ svg: "<svg/>" }).mockReturnValueOnce(second.promise);
