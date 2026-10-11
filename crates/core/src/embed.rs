@@ -16,6 +16,11 @@ use crate::trace::{check, resample, TraceSpec, TRACE_MAX_SIDE};
 ///
 /// `xlink:href` rather than `href`: Illustrator, Inkscape and Figma read the
 /// former, and browsers read both.
+///
+/// `preserveAspectRatio="none"`: rounding at the working size, or in the
+/// reduction, can leave the picture's shape a fraction of a pixel off
+/// `size`, and the default `meet` would then leave clear columns or rows at
+/// the edges. Stretching by that fraction does not show.
 pub(crate) fn embed_svg(
     img: &DynamicImage,
     quality: u8,
@@ -53,7 +58,7 @@ pub(crate) fn embed_svg(
         "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\">\n"
     ));
     out.push_str(&format!(
-        "<image width=\"{w}\" height=\"{h}\" xlink:href=\"data:{mime};base64,"
+        "<image width=\"{w}\" height=\"{h}\" preserveAspectRatio=\"none\" xlink:href=\"data:{mime};base64,"
     ));
     out.push_str(&data);
     out.push_str("\"/>\n</svg>\n");

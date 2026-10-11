@@ -530,7 +530,7 @@ fn embed_keeps_an_opaque_picture_as_jpeg() {
         "{}",
         &svg[..svg.len().min(300)]
     );
-    assert!(svg.contains(r#"<image width="300" height="200" xlink:href="data:image/jpeg;base64,"#));
+    assert!(svg.contains(r#"<image width="300" height="200" preserveAspectRatio="none" xlink:href="data:image/jpeg;base64,"#));
     assert!(svg.trim_end().ends_with("\"/>\n</svg>"));
     let (mime, bytes) = common::embedded_picture(&svg);
     assert_eq!(mime, "image/jpeg");
@@ -546,7 +546,7 @@ fn embed_keeps_an_opaque_picture_as_jpeg() {
 fn embed_keeps_transparency_as_png_with_the_same_pixels() {
     let src = cutout(120, 80);
     let svg = embed_at(&src, (120, 80));
-    assert!(svg.contains(r#"<image width="120" height="80" xlink:href="data:image/png;base64,"#));
+    assert!(svg.contains(r#"<image width="120" height="80" preserveAspectRatio="none" xlink:href="data:image/png;base64,"#));
     let (mime, bytes) = common::embedded_picture(&svg);
     assert_eq!(mime, "image/png");
     assert_eq!(
@@ -565,7 +565,9 @@ fn embed_keeps_transparency_as_png_with_the_same_pixels() {
 fn embed_writes_the_requested_size_around_the_working_resolution() {
     let svg = embed_at(&landscape(1000, 500), (100, 50));
     assert!(svg.contains(r#" width="100" height="50" viewBox="0 0 100 50">"#));
-    assert!(svg.contains(r#"<image width="100" height="50" xlink:href="#));
+    assert!(
+        svg.contains(r#"<image width="100" height="50" preserveAspectRatio="none" xlink:href="#)
+    );
     let picture = inside(&svg);
     assert_eq!((picture.width(), picture.height()), (1000, 500));
 }
@@ -583,6 +585,16 @@ fn embed_reduces_past_the_trace_maximum_like_the_tracer() {
     assert!(svg.contains(r#" width="4100" height="10" viewBox="0 0 4100 10">"#));
     let picture = inside(&svg);
     assert_eq!((picture.width(), picture.height()), (4096, 10));
+}
+
+#[test]
+fn embed_covers_the_svg_edge_to_edge() {
+    // Stored as 4096x10 inside a 4100x10 box. Kept to its own shape, the
+    // picture would sit 2 px in from each end and leave both ends clear.
+    let svg = embed_at(&landscape(4100, 10), (4100, 10));
+    let r = back(svg.as_bytes(), 4100, 10);
+    assert_eq!(r.get_pixel(0, 5)[3], 255);
+    assert_eq!(r.get_pixel(4099, 5)[3], 255);
 }
 
 #[test]
