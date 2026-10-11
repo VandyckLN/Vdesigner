@@ -10,9 +10,13 @@ use crate::trace::{check, resample, TraceSpec, TRACE_MAX_SIDE};
 
 /// Wraps the picture in an SVG whose `width`, `height` and `viewBox` are
 /// `size`. The pixels stay at the resolution the job worked at, reduced to
-/// `TRACE_MAX_SIDE` like the tracer's copy but never enlarged: an `<image>`
-/// gains nothing from made-up pixels. A fully opaque picture goes as JPEG at
-/// `quality`; any transparency goes as PNG, which keeps every pixel.
+/// `TRACE_MAX_SIDE` like the tracer's copy. Unlike the tracer, nothing here
+/// enlarges a small picture to `TRACE_MIN_SIDE`: an `<image>` gains nothing
+/// from made-up pixels. The job's steps can still enlarge it, since
+/// `detail_ratio` never runs them below the requested size: asking for more
+/// than the source stores an enlarged picture, heavier and no sharper. A fully
+/// opaque picture goes as JPEG at `quality`; any transparency goes as PNG,
+/// which keeps every pixel.
 ///
 /// `xlink:href` rather than `href`: Illustrator, Inkscape and Figma read the
 /// former, and browsers read both.

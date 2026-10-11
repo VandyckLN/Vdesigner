@@ -142,13 +142,14 @@ fontes do sistema não foi ligado. Um SVG com texto rasteriza sem ele.
 A Foto original, o padrão do SVG, é uma foto dentro do SVG: uma foto de
 1563 px sai com 333 KB em menos de meio segundo, mas não vira formas editáveis,
 pixela se ampliada além da resolução original e pesa um terço a mais que a
-mesma foto num JPG. Exportar pequeno não a deixa mais leve, porque ela guarda a
-resolução da imagem aberta, até 4096 px. A Foto em vetor vira formas, mas fica
-com cara de pintura e pesa MB: a mesma foto leva uns 6 s e 4,6 MB no Normal,
-8 s e 5,1 MB no Alto, 11 s e 5,5 MB no Máximo. Para foto em site, WebP ou AVIF
-continua mais leve. Imagem abaixo de uns 100 px vetoriza com contorno
-grosseiro, e um detalhe de até 2 px pode sumir. Parta do maior arquivo que
-tiver.
+mesma foto num JPG. Ela guarda a foto no tamanho da imagem aberta, até
+4096 px: exportar pequeno não a deixa mais leve, e exportar maior amplia a foto
+guardada junto, o que pesa mais e não ganha detalhe. A Foto em vetor vira
+formas, mas fica com cara de pintura e pesa MB: a mesma foto leva uns 6 s e
+4,6 MB no Normal, 8 s e 5,1 MB no Alto, 11 s e 5,5 MB no Máximo. Para foto em
+site, WebP ou AVIF continua mais leve. Imagem abaixo de uns 100 px vetoriza
+com contorno grosseiro, e um detalhe de até 2 px pode sumir. Parta do maior
+arquivo que tiver.
 
 O empacotamento hoje é só para Windows. O motor em si não tem nada preso à
 plataforma, e o Tauri suporta Linux e macOS — falta o trabalho de build e teste.

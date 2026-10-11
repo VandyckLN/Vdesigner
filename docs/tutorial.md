@@ -84,19 +84,21 @@ vale partir do maior arquivo que houver. Abaixo de uns 100 px o contorno sai
 grosseiro, e um detalhe de até 2 px pode sumir.
 
 A Foto original segue a mesma regra, com uma diferença que pesa no arquivo: a
-foto guardada fica na resolução da imagem aberta, até 4096 px, e uma imagem
-pequena não é ampliada. Exportar com largura menor só muda `width` e `height`,
-então não deixa o SVG mais leve. Para pesar menos, baixe a Compressão, ou
-exporte antes um JPG no tamanho certo e abra esse JPG.
+foto guardada fica no tamanho da imagem aberta, até 4096 px, sem o mínimo de
+512 px. Exportar com largura menor só muda `width` e `height`, então não deixa
+o SVG mais leve. Para pesar menos, baixe a Compressão, ou exporte antes um JPG
+no tamanho certo e abra esse JPG. Já pedir um tamanho maior que o da imagem
+amplia a foto guardada junto: o arquivo fica mais pesado e não ganha detalhe.
 
 Quanto demora: logo de até 2000 px em menos de 2 s, de 4096 px em uns 6 s, foto
 grande de 4096 px no modo Cores em até 40 s. A janela não trava.
 
 Uma foto de 1563 px, guardada como PNG de 1,6 MB, medida em versão de release:
 na Foto original, com a Compressão em 82, o padrão, sai com 333 KB em menos de
-meio segundo; em 60, com 225 KB; em 95, com 650 KB. Na Foto em vetor, leva uns
-6 s e sai com 4,6 MB no Normal, uns 8 s e 5,1 MB no Alto, uns 11 s e 5,5 MB no
-Máximo.
+meio segundo; em 60, com 225 KB; em 95, com 650 KB. Exportada com 3000 px de
+largura, a foto guardada é ampliada junto e o SVG sai com 840 KB, sem detalhe a
+mais. Na Foto em vetor, leva uns 6 s e sai com 4,6 MB no Normal, uns 8 s e
+5,1 MB no Alto, uns 11 s e 5,5 MB no Máximo.
 
 A Foto original pesa um terço a mais que a mesma foto num JPG, porque a foto
 vai escrita como texto dentro do SVG. Para foto em site, WebP ou AVIF continua
