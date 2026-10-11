@@ -198,7 +198,7 @@ pub async fn preview_svg(job: Job, session: State<'_, Session>) -> CommandResult
     let superseded = session.traces.begin();
     let svg = tauri::async_runtime::spawn_blocking(move || svg_preview(&bytes, &job, &superseded))
         .await
-        .map_err(|_| "a vetorização foi interrompida".to_string())??;
+        .map_err(|_| "a prévia do SVG foi interrompida".to_string())??;
     Ok(SvgPreview { svg })
 }
 

@@ -266,7 +266,7 @@ describe("Editor", () => {
     await waitFor(() => expect(copy()).toBeEnabled());
   });
 
-  it("esconde o tamanho do SVG anterior durante uma nova vetorização", async () => {
+  it("esconde o tamanho do SVG anterior enquanto uma prévia nova é calculada", async () => {
     const second = deferred<SvgPreview>();
     previewSvg.mockResolvedValueOnce({ svg: "<svg>1234</svg>" }).mockReturnValueOnce(second.promise);
     await open();
