@@ -10,6 +10,7 @@ use visioncortex::{
     Color, ColorImage, CompoundPath, CompoundPathElement, PathSimplifyMode, PointF64, PointI32,
 };
 
+use crate::embed::embed_svg;
 use crate::error::CoreError;
 use crate::resize::{resize, FitMode, ResizeSpec};
 
@@ -19,6 +20,8 @@ pub enum TraceMode {
     Color,
     /// Faithful photo: a large palette, background always kept.
     Photo,
+    /// The picture itself inside the SVG, not traced.
+    Embed,
 }
 
 /// Photo palette size.
@@ -43,7 +46,8 @@ impl TraceDetail {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TraceSpec {
     pub mode: TraceMode,
-    /// 2 to 16. Validated in Color and Mono, used only by Color; Photo ignores it.
+    /// 2 to 16. Validated in Color and Mono, used only by Color; Photo and
+    /// Embed ignore it.
     pub colors: u8,
     /// Color only: the colour that dominates the border becomes transparent.
     pub remove_background: bool,
@@ -82,30 +86,33 @@ const SPLICE_DEGREES: f64 = 45.0;
 /// A pixel's palette index, or `None` when it is transparent.
 type Label = Option<u8>;
 
-/// `size` is what `width`/`height` say; the drawing itself is computed at the
-/// working resolution and the `viewBox` carries that.
+/// `size` is what `width`/`height` say. The traced modes compute the drawing
+/// at the working resolution and the `viewBox` carries that; Embed keeps the
+/// picture at that resolution under a `viewBox` of `size`. `quality` is the
+/// job's output quality, read only by Embed, for the JPEG it keeps.
 pub fn trace_svg(
     img: &DynamicImage,
     spec: &TraceSpec,
+    quality: u8,
     size: (u32, u32),
     cancel: &dyn Fn() -> bool,
 ) -> Result<Vec<u8>, CoreError> {
-    if spec.mode != TraceMode::Photo && !(2..=16).contains(&spec.colors) {
+    if matches!(spec.mode, TraceMode::Color | TraceMode::Mono) && !(2..=16).contains(&spec.colors) {
         return Err(CoreError::InvalidParameter(format!(
             "cores deve ficar entre 2 e 16, recebido {}",
             spec.colors
         )));
     }
-    let source = img.to_rgba8();
     let body = match spec.mode {
+        TraceMode::Embed => return embed_svg(img, quality, size, cancel),
         TraceMode::Color => trace_color(
-            &source,
+            &img.to_rgba8(),
             spec.colors as usize,
             spec.remove_background,
             cancel,
         )?,
-        TraceMode::Photo => trace_color(&source, spec.detail.colors(), false, cancel)?,
-        TraceMode::Mono => trace_mono(&source, cancel)?,
+        TraceMode::Photo => trace_color(&img.to_rgba8(), spec.detail.colors(), false, cancel)?,
+        TraceMode::Mono => trace_mono(&img.to_rgba8(), cancel)?,
     };
     let mut out = format!(
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\">\n",
@@ -131,7 +138,7 @@ fn longest_side(img: &RgbaImage) -> u32 {
 
 /// Resamples so the longest side becomes `target`, on a premultiplied copy so
 /// transparent pixels do not bleed their RGB into the edges.
-fn resample(img: &RgbaImage, target: u32) -> Result<RgbaImage, CoreError> {
+pub(crate) fn resample(img: &RgbaImage, target: u32) -> Result<RgbaImage, CoreError> {
     let scale = target as f64 / longest_side(img) as f64;
     let side = |v: u32| ((v as f64 * scale).round() as u32).max(1);
     let mut pre = img.clone();
@@ -182,7 +189,7 @@ fn nearest(
     candidates.min_by_key(|&i| (dist2(colour, palette[i]), i))
 }
 
-fn check(cancel: &dyn Fn() -> bool) -> Result<(), CoreError> {
+pub(crate) fn check(cancel: &dyn Fn() -> bool) -> Result<(), CoreError> {
     if cancel() {
         Err(CoreError::Cancelled)
     } else {

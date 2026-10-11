@@ -23,6 +23,7 @@ fast_image_resize = { version = "5", features = ["image"] }
 imageproc = { version = "0.25", default-features = false, features = ["rayon"] }
 resvg = "0.45"
 visioncortex = "=0.9.3"
+base64 = "0.22"
 
 [profile.dev.package.visioncortex]
 opt-level = 3

@@ -2,6 +2,7 @@
 
 mod color;
 mod decode;
+mod embed;
 mod encode;
 mod error;
 mod filters;

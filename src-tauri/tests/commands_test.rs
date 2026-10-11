@@ -104,6 +104,19 @@ fn svg_preview_is_the_text_the_export_writes() {
 }
 
 #[test]
+fn svg_preview_of_an_embedded_photo_is_the_text_the_export_writes() {
+    let bytes = two_color_png();
+    let mut job = svg_job(vdesigner_core::OutputFormat::Svg);
+    job.output.trace.mode = vdesigner_core::TraceMode::Embed;
+    let preview = vdesigner::commands::svg_preview(&bytes, &job, &|| false).unwrap();
+    assert!(preview.contains("xlink:href=\"data:image/jpeg;base64,"));
+    let exported = vdesigner_core::run_job(&bytes, &job, &mut |_| {})
+        .unwrap()
+        .bytes;
+    assert_eq!(preview, String::from_utf8(exported).unwrap());
+}
+
+#[test]
 fn svg_preview_refuses_a_raster_format() {
     let job = svg_job(vdesigner_core::OutputFormat::WebP);
     let m = vdesigner::commands::svg_preview(&two_color_png(), &job, &|| false).unwrap_err();

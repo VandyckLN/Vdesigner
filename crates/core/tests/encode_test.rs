@@ -3,7 +3,7 @@ mod common;
 use image::{DynamicImage, Rgba, RgbaImage};
 use vdesigner_core::{
     decode, detect_format, encode, is_svg, CoreError, EncodeSpec, InputFormat, OutputFormat,
-    TraceSpec,
+    TraceMode, TraceSpec,
 };
 
 fn spec(format: OutputFormat, quality: u8) -> EncodeSpec {
@@ -117,4 +117,26 @@ fn encodes_svg_through_the_tracer() {
     assert!(String::from_utf8(bytes)
         .unwrap()
         .contains(r#"width="64" height="48""#));
+}
+
+#[test]
+fn passes_the_quality_to_the_photo_kept_inside_the_svg() {
+    // Noise keeps the JPEG size sensitive to quality.
+    let mut state: u32 = 7;
+    let img = DynamicImage::ImageRgba8(RgbaImage::from_fn(96, 64, |_, _| {
+        state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        let v = (state >> 24) as u8;
+        Rgba([v, v / 2, 255 - v, 255])
+    }));
+    let size = |quality| {
+        let spec = EncodeSpec {
+            trace: TraceSpec {
+                mode: TraceMode::Embed,
+                ..TraceSpec::default()
+            },
+            ..spec(OutputFormat::Svg, quality)
+        };
+        encode(&img, &spec).unwrap().len()
+    };
+    assert!(size(40) < size(95), "{} vs {}", size(40), size(95));
 }

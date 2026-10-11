@@ -6237,6 +6237,7 @@ dependencies = [
 name = "vdesigner-core"
 version = "2.2.2"
 dependencies = [
+ "base64 0.22.1",
  "fast_image_resize",
  "image",
  "imageproc",

@@ -290,3 +290,49 @@ fn vectorizes_from_the_source_resolution_not_the_resize_target() {
     );
     assert_eq!((out.width, out.height), (100, 50));
 }
+
+fn embed_output() -> EncodeSpec {
+    EncodeSpec {
+        trace: TraceSpec {
+            mode: TraceMode::Embed,
+            ..TraceSpec::default()
+        },
+        ..svg_output()
+    }
+}
+
+#[test]
+fn embeds_the_source_resolution_even_when_exporting_small() {
+    let job = Job {
+        steps: vec![Step::Resize(ResizeSpec {
+            width: Some(100),
+            height: Some(50),
+            fit: FitMode::Stretch,
+            pad_color: [0, 0, 0, 0],
+        })],
+        output: embed_output(),
+    };
+    let out = run_job(&png_input(1000, 500), &job, &mut |_| {}).unwrap();
+    let text = String::from_utf8(out.bytes).unwrap();
+    assert!(
+        text.contains(r#" width="100" height="50" viewBox="0 0 100 50">"#),
+        "{}",
+        &text[..text.len().min(300)]
+    );
+    let (mime, bytes) = common::embedded_picture(&text);
+    assert_eq!(mime, "image/jpeg");
+    let picture = image::load_from_memory(&bytes).unwrap();
+    assert_eq!((picture.width(), picture.height()), (1000, 500));
+    assert_eq!((out.width, out.height), (100, 50));
+}
+
+#[test]
+fn labels_the_last_stage_codificando_for_embed() {
+    let job = Job {
+        steps: vec![],
+        output: embed_output(),
+    };
+    let mut labels = Vec::new();
+    run_job(&png_input(32, 32), &job, &mut |p| labels.push(p.label)).unwrap();
+    assert_eq!(labels.last(), Some(&"codificando"));
+}

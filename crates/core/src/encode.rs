@@ -52,7 +52,13 @@ pub fn encode(img: &DynamicImage, spec: &EncodeSpec) -> Result<Vec<u8>, CoreErro
         OutputFormat::Png => encode_with_image_crate(img, image::ImageFormat::Png),
         OutputFormat::Tiff => encode_with_image_crate(img, image::ImageFormat::Tiff),
         OutputFormat::Jpeg => encode_jpeg(img, spec.quality),
-        OutputFormat::Svg => trace_svg(img, &spec.trace, (img.width(), img.height()), &|| false),
+        OutputFormat::Svg => trace_svg(
+            img,
+            &spec.trace,
+            spec.quality,
+            (img.width(), img.height()),
+            &|| false,
+        ),
     }
 }
 

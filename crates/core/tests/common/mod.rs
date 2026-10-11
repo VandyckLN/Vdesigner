@@ -25,3 +25,19 @@ pub fn as_png(img: &DynamicImage) -> Vec<u8> {
     .expect("png encoding in test helper must not fail");
     bytes
 }
+
+/// MIME type and decoded bytes of the picture an Embed SVG carries in its
+/// `xlink:href` data URL.
+pub fn embedded_picture(svg: &str) -> (String, Vec<u8>) {
+    use base64::Engine;
+    let marker = "xlink:href=\"data:";
+    let start = svg.find(marker).expect("o SVG não traz data URL") + marker.len();
+    let (mime, rest) = svg[start..]
+        .split_once(";base64,")
+        .expect("a data URL não está em base64");
+    let end = rest.find('"').expect("a data URL não fecha as aspas");
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&rest[..end])
+        .expect("base64 inválido");
+    (mime.to_string(), bytes)
+}

@@ -20,6 +20,7 @@ full transitive dependency graph.
 | imageproc | MIT |
 | resvg | Apache-2.0 OR MIT |
 | visioncortex | MIT OR Apache-2.0 |
+| base64 | MIT OR Apache-2.0 |
 
 ### `src-tauri` dependencies (`src-tauri/Cargo.toml`)
 
@@ -28,7 +29,6 @@ full transitive dependency graph.
 | tauri | Apache-2.0 OR MIT |
 | tauri-plugin-dialog | Apache-2.0 OR MIT |
 | serde_json | MIT OR Apache-2.0 |
-| base64 | MIT OR Apache-2.0 |
 
 ## JavaScript packages (`ui/package.json`)
 

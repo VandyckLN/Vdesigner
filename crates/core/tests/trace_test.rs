@@ -1,3 +1,5 @@
+mod common;
+
 use std::cell::Cell;
 
 use image::{DynamicImage, RgbaImage};
@@ -6,6 +8,8 @@ use vdesigner_core::{rasterize_svg, trace_svg, CoreError, TraceDetail, TraceMode
 const RED: [u8; 4] = [220, 30, 30, 255];
 const BLUE: [u8; 4] = [30, 30, 220, 255];
 const NEVER: &dyn Fn() -> bool = &|| false;
+/// The job's `output.quality`. Only Embed reads it.
+const QUALITY: u8 = 82;
 
 fn color(n: u8, bg: bool) -> TraceSpec {
     TraceSpec {
@@ -63,7 +67,7 @@ fn img(w: u32, h: u32, f: impl Fn(u32, u32) -> [u8; 4]) -> DynamicImage {
 }
 
 fn trace(image: &DynamicImage, spec: &TraceSpec) -> Result<Vec<u8>, CoreError> {
-    trace_svg(image, spec, (image.width(), image.height()), NEVER)
+    trace_svg(image, spec, QUALITY, (image.width(), image.height()), NEVER)
 }
 
 /// Sub-sample centres of a 4x4 grid inside pixel (x, y).
@@ -188,7 +192,16 @@ fn writes_the_output_size_and_a_viewbox_of_the_working_copy() {
     assert!(own.contains(r#"viewBox="0 0 1000 500""#));
     let large = text(&trace(&white(4100, 10), &color(8, false)).unwrap());
     assert!(large.contains(r#"viewBox="0 0 4096 10""#));
-    let sized = text(&trace_svg(&white(1000, 500), &color(8, false), (64, 32), NEVER).unwrap());
+    let sized = text(
+        &trace_svg(
+            &white(1000, 500),
+            &color(8, false),
+            QUALITY,
+            (64, 32),
+            NEVER,
+        )
+        .unwrap(),
+    );
     assert!(sized.contains(r#"width="64" height="32" viewBox="0 0 1000 500""#));
 }
 
@@ -376,7 +389,7 @@ fn stops_mid_trace_when_cancelled() {
         calls.get() >= 4
     };
     let picture = logo(640, true);
-    let result = trace_svg(&picture, &color(8, false), (640, 640), &cancel);
+    let result = trace_svg(&picture, &color(8, false), QUALITY, (640, 640), &cancel);
     assert!(matches!(result, Err(CoreError::Cancelled)));
     assert!(calls.get() > 3);
 }
@@ -452,8 +465,201 @@ fn photo_stops_when_cancelled() {
     let r = trace_svg(
         &gradient(512),
         &photo(TraceDetail::Normal, false),
+        QUALITY,
         (512, 512),
         &|| true,
     );
     assert!(matches!(r, Err(CoreError::Cancelled)));
+}
+
+/// Every field Embed must ignore holds something that would fail or change a
+/// traced result: a colour count out of range, Max detail, background removal.
+fn embed() -> TraceSpec {
+    TraceSpec {
+        mode: TraceMode::Embed,
+        colors: 99,
+        remove_background: true,
+        detail: TraceDetail::Max,
+    }
+}
+
+fn embed_at(image: &DynamicImage, size: (u32, u32)) -> String {
+    text(&trace_svg(image, &embed(), QUALITY, size, NEVER).unwrap())
+}
+
+/// The picture an Embed SVG carries, decoded.
+fn inside(svg: &str) -> DynamicImage {
+    image::load_from_memory(&common::embedded_picture(svg).1).unwrap()
+}
+
+/// Opaque, smooth and wider than tall: a photo stand-in that also catches a
+/// swapped width and height.
+fn landscape(w: u32, h: u32) -> DynamicImage {
+    img(w, h, |x, y| {
+        let u = x * 255 / (w - 1);
+        let v = y * 255 / (h - 1);
+        [u as u8, v as u8, ((u + v) / 2) as u8, 255]
+    })
+}
+
+/// A disc over transparency with clear, soft and opaque pixels, and colour
+/// left under the clear ones, so only an exact copy keeps every byte.
+fn cutout(w: u32, h: u32) -> DynamicImage {
+    let (cx, cy, r) = (w as f64 / 2.0, h as f64 / 2.0, h as f64 / 3.0);
+    img(w, h, |x, y| {
+        let covered = subsamples(x, y)
+            .filter(|&(px, py)| (px - cx).hypot(py - cy) <= r)
+            .count() as u32;
+        [
+            (x * 2) as u8,
+            (y * 3) as u8,
+            90,
+            ((covered * 255 + 8) / 16) as u8,
+        ]
+    })
+}
+
+#[test]
+fn embed_keeps_an_opaque_picture_as_jpeg() {
+    let svg = embed_at(&landscape(300, 200), (300, 200));
+    assert!(
+        svg.starts_with(concat!(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink""#,
+            r#" width="300" height="200" viewBox="0 0 300 200">"#,
+        )),
+        "{}",
+        &svg[..svg.len().min(300)]
+    );
+    assert!(svg.contains(r#"<image width="300" height="200" xlink:href="data:image/jpeg;base64,"#));
+    assert!(svg.trim_end().ends_with("\"/>\n</svg>"));
+    let (mime, bytes) = common::embedded_picture(&svg);
+    assert_eq!(mime, "image/jpeg");
+    assert_eq!(
+        image::guess_format(&bytes).unwrap(),
+        image::ImageFormat::Jpeg
+    );
+    let picture = inside(&svg);
+    assert_eq!((picture.width(), picture.height()), (300, 200));
+}
+
+#[test]
+fn embed_keeps_transparency_as_png_with_the_same_pixels() {
+    let src = cutout(120, 80);
+    let svg = embed_at(&src, (120, 80));
+    assert!(svg.contains(r#"<image width="120" height="80" xlink:href="data:image/png;base64,"#));
+    let (mime, bytes) = common::embedded_picture(&svg);
+    assert_eq!(mime, "image/png");
+    assert_eq!(
+        image::guess_format(&bytes).unwrap(),
+        image::ImageFormat::Png
+    );
+    let picture = inside(&svg).to_rgba8();
+    assert_eq!(picture.dimensions(), (120, 80));
+    assert!(
+        picture.as_raw() == src.to_rgba8().as_raw(),
+        "pixels mudaram"
+    );
+}
+
+#[test]
+fn embed_writes_the_requested_size_around_the_working_resolution() {
+    let svg = embed_at(&landscape(1000, 500), (100, 50));
+    assert!(svg.contains(r#" width="100" height="50" viewBox="0 0 100 50">"#));
+    assert!(svg.contains(r#"<image width="100" height="50" xlink:href="#));
+    let picture = inside(&svg);
+    assert_eq!((picture.width(), picture.height()), (1000, 500));
+}
+
+#[test]
+fn embed_never_enlarges_a_small_picture() {
+    let svg = embed_at(&landscape(100, 60), (100, 60));
+    let picture = inside(&svg);
+    assert_eq!((picture.width(), picture.height()), (100, 60));
+}
+
+#[test]
+fn embed_reduces_past_the_trace_maximum_like_the_tracer() {
+    let svg = embed_at(&landscape(4100, 10), (4100, 10));
+    assert!(svg.contains(r#" width="4100" height="10" viewBox="0 0 4100 10">"#));
+    let picture = inside(&svg);
+    assert_eq!((picture.width(), picture.height()), (4096, 10));
+}
+
+#[test]
+fn embed_rasterizes_back_to_the_original() {
+    let photo = landscape(300, 200);
+    let e = mae(
+        &photo.to_rgba8(),
+        &back(embed_at(&photo, (300, 200)).as_bytes(), 300, 200),
+    );
+    assert!(e < 2.0, "jpeg {e}");
+
+    // Hard edge over clear black: the rasterizer's premultiplied output then
+    // reads the same as the straight source.
+    let (cx, cy) = (60.0, 40.0);
+    let disc = img(120, 80, |x, y| {
+        if (x as f64 + 0.5 - cx).hypot(y as f64 + 0.5 - cy) <= 30.0 {
+            [(x * 2) as u8, (y * 3) as u8, 90, 255]
+        } else {
+            [0, 0, 0, 0]
+        }
+    });
+    let r = back(embed_at(&disc, (120, 80)).as_bytes(), 120, 80);
+    let e = mae(&disc.to_rgba8(), &r);
+    assert!(e < 2.0, "png {e}");
+    assert_eq!(r.get_pixel(2, 2)[3], 0);
+    assert_eq!(r.get_pixel(60, 40)[3], 255);
+}
+
+#[test]
+fn embed_compresses_the_jpeg_with_the_job_quality() {
+    let picture = logo(256, true);
+    let size = |q| {
+        trace_svg(&picture, &embed(), q, (256, 256), NEVER)
+            .unwrap()
+            .len()
+    };
+    assert!(size(40) < size(95), "{} vs {}", size(40), size(95));
+}
+
+#[test]
+fn embed_ignores_the_colour_count() {
+    for n in [0, 1, 17, 255] {
+        let spec = TraceSpec {
+            colors: n,
+            ..embed()
+        };
+        assert!(
+            trace_svg(&halves(), &spec, QUALITY, (64, 64), NEVER).is_ok(),
+            "{n}"
+        );
+    }
+}
+
+#[test]
+fn embed_checks_for_cancellation_before_and_after_encoding() {
+    let picture = landscape(300, 200);
+    let r = trace_svg(&picture, &embed(), QUALITY, (300, 200), &|| true);
+    assert!(matches!(r, Err(CoreError::Cancelled)));
+
+    // Lets the first check through, so the second one comes after encoding.
+    let calls = Cell::new(0u32);
+    let late = || {
+        calls.set(calls.get() + 1);
+        calls.get() >= 2
+    };
+    let r = trace_svg(&picture, &embed(), QUALITY, (300, 200), &late);
+    assert!(matches!(r, Err(CoreError::Cancelled)));
+    assert_eq!(calls.get(), 2);
+}
+
+#[test]
+fn reads_embed_mode_from_json() {
+    for json in [
+        r#"{"mode":"Embed","colors":8,"remove_background":true,"detail":"Normal"}"#,
+        r#"{"mode":"Embed","colors":8,"remove_background":true}"#,
+    ] {
+        let spec: TraceSpec = serde_json::from_str(json).unwrap();
+        assert_eq!(spec.mode, TraceMode::Embed, "{json}");
+    }
 }

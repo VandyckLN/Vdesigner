@@ -1,7 +1,7 @@
 use crate::{
     adjust, decode, denoise, encode, error::CoreError, is_svg, rasterize_svg, resize,
     resize::target_size, sharpen, trace_svg, AdjustSpec, DenoiseSpec, EncodeSpec, FitMode,
-    OutputFormat, ResizeSpec, SharpenSpec, TRACE_MAX_SIDE,
+    OutputFormat, ResizeSpec, SharpenSpec, TraceMode, TRACE_MAX_SIDE,
 };
 use image::DynamicImage;
 use serde::{Deserialize, Serialize};
@@ -47,8 +47,9 @@ pub fn run_job(
 }
 
 /// Same as `run_job`, but `cancel` is polled between stages and inside the
-/// tracer. For SVG output the steps run enlarged so the tracer sees the
-/// source's detail, while the reported size stays the one that was asked for.
+/// tracer. For SVG output the steps run enlarged so the tracer, or the picture
+/// Embed keeps, gets the source's detail, while the reported size stays the
+/// one that was asked for.
 pub fn run_job_cancellable(
     input: &[u8],
     job: &Job,
@@ -221,14 +222,16 @@ fn execute(
     let svg = job.output.format == OutputFormat::Svg;
     let bytes = if svg {
         let size = size.unwrap_or((image.width(), image.height()));
-        trace_svg(&image, &job.output.trace, size, cancel)?
+        trace_svg(&image, &job.output.trace, job.output.quality, size, cancel)?
     } else {
         encode(&image, &job.output)?
     };
+    // Embed only encodes the picture it keeps, so it says so.
+    let traced = svg && job.output.trace.mode != TraceMode::Embed;
     progress(Progress {
         current: total,
         total,
-        label: if svg { "vetorizando" } else { "codificando" },
+        label: if traced { "vetorizando" } else { "codificando" },
     });
 
     Ok(JobOutput {

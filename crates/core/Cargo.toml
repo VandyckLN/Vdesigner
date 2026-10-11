@@ -19,3 +19,4 @@ fast_image_resize.workspace = true
 imageproc.workspace = true
 resvg.workspace = true
 visioncortex.workspace = true
+base64.workspace = true
