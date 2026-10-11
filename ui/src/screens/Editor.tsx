@@ -99,7 +99,9 @@ export function Editor({ onOpenFile, onPickDirectory }: EditorProps) {
           if (id !== previewRequest.current) return;
           setPreviewSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
           setSvgCode(svg);
-          setEstimatedBytes(new TextEncoder().encode(svg).length);
+          // Both SVG writers emit ASCII only, so the length is the byte count,
+          // without copying a multi-MB string just to measure it.
+          setEstimatedBytes(svg.length);
         } else {
           const result = await api.preview(buildJob(settings));
           if (id !== previewRequest.current) return;
