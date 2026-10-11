@@ -1,6 +1,7 @@
 use crate::{
-    adjust, decode, denoise, encode, error::CoreError, is_svg, rasterize_svg, resize, sharpen,
-    AdjustSpec, DenoiseSpec, EncodeSpec, FitMode, ResizeSpec, SharpenSpec,
+    adjust, decode, denoise, encode, error::CoreError, is_svg, rasterize_svg, resize,
+    resize::target_size, sharpen, trace_svg, AdjustSpec, DenoiseSpec, EncodeSpec, FitMode,
+    OutputFormat, ResizeSpec, SharpenSpec, TRACE_MAX_SIDE,
 };
 use image::DynamicImage;
 use serde::{Deserialize, Serialize};
@@ -42,8 +43,45 @@ pub fn run_job(
     job: &Job,
     progress: &mut dyn FnMut(Progress),
 ) -> Result<JobOutput, CoreError> {
+    run_job_cancellable(input, job, progress, &|| false)
+}
+
+/// Same as `run_job`, but `cancel` is polled between stages and inside the
+/// tracer. For SVG output the steps run enlarged so the tracer sees the
+/// source's detail, while the reported size stays the one that was asked for.
+pub fn run_job_cancellable(
+    input: &[u8],
+    job: &Job,
+    progress: &mut dyn FnMut(Progress),
+    cancel: &dyn Fn() -> bool,
+) -> Result<JobOutput, CoreError> {
     let image = load(input, job)?;
-    execute(image, job, progress)
+    if job.output.format != OutputFormat::Svg {
+        return execute(image, job, progress, cancel, None);
+    }
+
+    // Requested size: follow every Resize step on dimensions only.
+    let (mut w, mut h) = (image.width(), image.height());
+    for step in &job.steps {
+        if let Step::Resize(spec) = step {
+            (w, h) = target_size(w, h, spec);
+        }
+    }
+    let ratio = detail_ratio(image.width().max(image.height()), w.max(h));
+    let scaled_job = Job {
+        steps: job.steps.iter().map(|s| scale_step(s, ratio)).collect(),
+        output: job.output,
+    };
+    execute(image, &scaled_job, progress, cancel, Some((w, h)))
+}
+
+/// How much larger than the requested size an SVG job's resize steps run, so
+/// the tracer sees the source's detail instead of a thumbnail. Never below 1:
+/// an enlargement the person asked for is kept. Never past TRACE_MAX_SIDE.
+fn detail_ratio(source_long: u32, output_long: u32) -> f64 {
+    let output = output_long.max(1) as f64;
+    let cap = (TRACE_MAX_SIDE as f64 / output).max(1.0);
+    (source_long as f64 / output).clamp(1.0, cap)
 }
 
 /// Runs the same job over a reduced copy, so the Editor stays interactive.
@@ -84,11 +122,16 @@ pub fn run_preview(input: &[u8], job: &Job, max_side: u32) -> Result<JobOutput, 
         output: job.output,
     };
 
-    execute(reduced, &scaled_job, &mut |_| {})
+    execute(reduced, &scaled_job, &mut |_| {}, &|| false, None)
 }
 
 fn load(input: &[u8], job: &Job) -> Result<DynamicImage, CoreError> {
     if is_svg(input) {
+        if job.output.format == OutputFormat::Svg {
+            return Err(CoreError::InvalidParameter(
+                "a imagem já é SVG; escolha outro formato de saída".into(),
+            ));
+        }
         // Vector input is rasterized straight at the first resize target when
         // there is one, which avoids resampling a raster copy later.
         let target = job.steps.iter().find_map(|step| match step {
@@ -141,10 +184,15 @@ fn execute(
     mut image: DynamicImage,
     job: &Job,
     progress: &mut dyn FnMut(Progress),
+    cancel: &dyn Fn() -> bool,
+    size: Option<(u32, u32)>,
 ) -> Result<JobOutput, CoreError> {
     let total = job.steps.len() as u32 + 1;
 
     for (index, step) in job.steps.iter().enumerate() {
+        if cancel() {
+            return Err(CoreError::Cancelled);
+        }
         let label = match step {
             Step::Resize(spec) => {
                 image = resize(&image, spec)?;
@@ -170,17 +218,23 @@ fn execute(
         });
     }
 
-    let bytes = encode(&image, &job.output)?;
+    let svg = job.output.format == OutputFormat::Svg;
+    let bytes = if svg {
+        let size = size.unwrap_or((image.width(), image.height()));
+        trace_svg(&image, &job.output.trace, size, cancel)?
+    } else {
+        encode(&image, &job.output)?
+    };
     progress(Progress {
         current: total,
         total,
-        label: "codificando",
+        label: if svg { "vetorizando" } else { "codificando" },
     });
 
     Ok(JobOutput {
         bytes,
-        width: image.width(),
-        height: image.height(),
+        width: size.map_or(image.width(), |s| s.0),
+        height: size.map_or(image.height(), |s| s.1),
     })
 }
 
@@ -286,5 +340,25 @@ mod tests {
             }
             other => panic!("esperava Adjust, veio {other:?}"),
         }
+    }
+
+    fn close(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-9
+    }
+
+    #[test]
+    fn detail_ratio_brings_a_reduced_output_back_to_the_source_resolution() {
+        assert!(close(detail_ratio(1000, 100), 10.0));
+    }
+
+    #[test]
+    fn detail_ratio_stops_at_the_trace_cap() {
+        assert!(close(detail_ratio(8000, 100), 40.96));
+    }
+
+    #[test]
+    fn detail_ratio_never_shrinks_what_the_person_asked_for() {
+        assert!(close(detail_ratio(500, 1000), 1.0));
+        assert!(close(detail_ratio(100, 5000), 1.0));
     }
 }

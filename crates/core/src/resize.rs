@@ -87,7 +87,7 @@ fn validate(spec: &ResizeSpec) -> Result<(), CoreError> {
 }
 
 /// Resolves the requested box. A missing dimension is derived from the source ratio.
-fn target_size(src_w: u32, src_h: u32, spec: &ResizeSpec) -> (u32, u32) {
+pub(crate) fn target_size(src_w: u32, src_h: u32, spec: &ResizeSpec) -> (u32, u32) {
     match (spec.width, spec.height) {
         (Some(w), Some(h)) => (w, h),
         (Some(w), None) => (w, scale_dimension(w, src_h, src_w)),

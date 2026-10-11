@@ -19,7 +19,7 @@ pub use decode::{decode, detect_format, InputFormat};
 pub use encode::{encode, EncodeSpec, OutputFormat};
 pub use error::CoreError;
 pub use filters::{adjust, denoise, sharpen, AdjustSpec, DenoiseSpec, SharpenSpec};
-pub use job::{run_job, run_preview, Job, JobOutput, Progress, Step};
+pub use job::{run_job, run_job_cancellable, run_preview, Job, JobOutput, Progress, Step};
 pub use palette::{
     gradient_css, palette_from_json, palette_to_json, to_css_vars, to_tailwind, validate_palette,
     Generated, GradientRef, Palette, Swatch, CSS_FILE_NAME, PALETTE_FILE_NAME,

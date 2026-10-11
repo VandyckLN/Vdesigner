@@ -2,7 +2,8 @@ mod common;
 
 use image::{DynamicImage, Rgba, RgbaImage};
 use vdesigner_core::{
-    decode, detect_format, encode, CoreError, EncodeSpec, InputFormat, OutputFormat,
+    decode, detect_format, encode, is_svg, CoreError, EncodeSpec, InputFormat, OutputFormat,
+    TraceSpec,
 };
 
 fn spec(format: OutputFormat, quality: u8) -> EncodeSpec {
@@ -10,6 +11,7 @@ fn spec(format: OutputFormat, quality: u8) -> EncodeSpec {
         format,
         quality,
         lossless: false,
+        trace: TraceSpec::default(),
     }
 }
 
@@ -104,4 +106,15 @@ fn rejects_quality_above_one_hundred() {
     let img = common::gradient(8, 8);
     let err = encode(&img, &spec(OutputFormat::Jpeg, 120)).unwrap_err();
     assert!(matches!(err, CoreError::InvalidParameter(_)));
+}
+
+#[test]
+fn encodes_svg_through_the_tracer() {
+    let img = common::gradient(64, 48);
+    let bytes = encode(&img, &spec(OutputFormat::Svg, 82)).unwrap();
+    assert!(bytes.starts_with(b"<svg"));
+    assert!(is_svg(&bytes));
+    assert!(String::from_utf8(bytes)
+        .unwrap()
+        .contains(r#"width="64" height="48""#));
 }

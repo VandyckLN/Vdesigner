@@ -111,6 +111,7 @@ pub fn preview(job: Job, session: State<Session>) -> CommandResult<PreviewResult
             format: OutputFormat::Png,
             quality: 100,
             lossless: true,
+            trace: vdesigner_core::TraceSpec::default(),
         },
     };
     let output =
@@ -214,6 +215,7 @@ fn extension_for(format: OutputFormat) -> &'static str {
         OutputFormat::Jpeg => "jpg",
         OutputFormat::Tiff => "tiff",
         OutputFormat::Ico => "ico",
+        OutputFormat::Svg => "svg",
     }
 }
 
@@ -224,6 +226,7 @@ fn preview_png(bytes: &[u8]) -> CommandResult<String> {
             format: OutputFormat::Png,
             quality: 100,
             lossless: true,
+            trace: vdesigner_core::TraceSpec::default(),
         },
     };
     let output = run_preview(bytes, &job, PREVIEW_MAX_SIDE).map_err(|e| e.to_string())?;

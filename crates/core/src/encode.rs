@@ -1,4 +1,5 @@
 use crate::error::CoreError;
+use crate::trace::{trace_svg, TraceSpec};
 use image::DynamicImage;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -9,6 +10,7 @@ pub enum OutputFormat {
     Jpeg,
     Tiff,
     Ico,
+    Svg,
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
@@ -18,6 +20,9 @@ pub struct EncodeSpec {
     pub quality: u8,
     /// Only honoured by WebP, which supports both modes.
     pub lossless: bool,
+    /// Only read by Svg. Absent in older job JSON, hence the default.
+    #[serde(default)]
+    pub trace: TraceSpec,
 }
 
 /// The ICO container stores at most 256 pixels per side.
@@ -47,6 +52,7 @@ pub fn encode(img: &DynamicImage, spec: &EncodeSpec) -> Result<Vec<u8>, CoreErro
         OutputFormat::Png => encode_with_image_crate(img, image::ImageFormat::Png),
         OutputFormat::Tiff => encode_with_image_crate(img, image::ImageFormat::Tiff),
         OutputFormat::Jpeg => encode_jpeg(img, spec.quality),
+        OutputFormat::Svg => trace_svg(img, &spec.trace, (img.width(), img.height()), &|| false),
     }
 }
 

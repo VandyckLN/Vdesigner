@@ -1,8 +1,8 @@
 mod common;
 
 use vdesigner_core::{
-    run_job, run_preview, CoreError, DenoiseSpec, EncodeSpec, FitMode, Job, OutputFormat, Progress,
-    ResizeSpec, SharpenSpec, Step,
+    run_job, run_job_cancellable, run_preview, CoreError, DenoiseSpec, EncodeSpec, FitMode, Job,
+    OutputFormat, Progress, ResizeSpec, SharpenSpec, Step, TraceMode, TraceSpec,
 };
 
 fn png_input(width: u32, height: u32) -> Vec<u8> {
@@ -14,6 +14,7 @@ fn webp_output() -> EncodeSpec {
         format: OutputFormat::WebP,
         quality: 82,
         lossless: false,
+        trace: TraceSpec::default(),
     }
 }
 
@@ -83,6 +84,7 @@ fn accepts_svg_input_and_rasterizes_it() {
             format: OutputFormat::Png,
             quality: 100,
             lossless: true,
+            trace: TraceSpec::default(),
         },
     };
     let out = run_job(svg, &job, &mut |_| {}).unwrap();
@@ -150,11 +152,20 @@ fn contract_json_from_the_ui_deserializes_into_a_job() {
         r#"{"steps":[{"Resize":{"width":800,"height":600,"fit":"Stretch","pad_color":[0,0,0,0]}},"#,
         r#"{"Denoise":{"radius":2}},{"Sharpen":{"amount":1,"radius":1}},"#,
         r#"{"Adjust":{"brightness":0.1,"contrast":0,"saturation":0}}],"#,
-        r#""output":{"format":"WebP","quality":82,"lossless":false}}"#,
+        r#""output":{"format":"WebP","quality":82,"lossless":false,"#,
+        r#""trace":{"mode":"Color","colors":8,"remove_background":true}}}"#,
     );
 
     let job: Job = serde_json::from_str(WIRE_CONTRACT_JSON).expect("contrato de fio inválido");
 
+    assert_eq!(
+        job.output.trace,
+        TraceSpec {
+            mode: TraceMode::Color,
+            colors: 8,
+            remove_background: true
+        }
+    );
     assert_eq!(job.steps.len(), 4);
     match &job.steps[0] {
         Step::Resize(spec) => {
@@ -198,4 +209,83 @@ fn job_round_trips_through_json() {
     let parsed: Job = serde_json::from_str(&text).unwrap();
     assert_eq!(parsed.steps.len(), 1);
     assert_eq!(parsed.output.quality, 82);
+}
+
+const CIRCLE: &[u8] = include_bytes!("fixtures/circle.svg");
+
+fn svg_output() -> EncodeSpec {
+    EncodeSpec {
+        format: OutputFormat::Svg,
+        quality: 82,
+        lossless: false,
+        trace: TraceSpec::default(),
+    }
+}
+
+#[test]
+fn refuses_to_vectorize_an_svg_input() {
+    let job = Job {
+        steps: vec![],
+        output: svg_output(),
+    };
+    for result in [
+        run_job(CIRCLE, &job, &mut |_| {}),
+        run_preview(CIRCLE, &job, 512),
+    ] {
+        match result {
+            Err(CoreError::InvalidParameter(m)) => assert!(m.contains("já é SVG"), "{m}"),
+            other => panic!("esperava InvalidParameter, veio {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn labels_the_last_stage_vetorizando_for_svg() {
+    let job = Job {
+        steps: vec![],
+        output: svg_output(),
+    };
+    let mut labels = Vec::new();
+    run_job(&png_input(32, 32), &job, &mut |p| labels.push(p.label)).unwrap();
+    assert_eq!(labels.last(), Some(&"vetorizando"));
+}
+
+#[test]
+fn run_job_cancellable_stops_when_cancelled() {
+    let job = Job {
+        steps: vec![],
+        output: svg_output(),
+    };
+    let result = run_job_cancellable(&png_input(64, 64), &job, &mut |_| {}, &|| true);
+    assert!(matches!(result, Err(CoreError::Cancelled)));
+}
+
+#[test]
+fn a_job_without_trace_still_deserializes() {
+    let job: Job = serde_json::from_str(
+        r#"{"steps":[],"output":{"format":"WebP","quality":82,"lossless":false}}"#,
+    )
+    .unwrap();
+    assert_eq!(job.output.trace, TraceSpec::default());
+}
+
+#[test]
+fn vectorizes_from_the_source_resolution_not_the_resize_target() {
+    let job = Job {
+        steps: vec![Step::Resize(ResizeSpec {
+            width: Some(100),
+            height: Some(50),
+            fit: FitMode::Stretch,
+            pad_color: [0, 0, 0, 0],
+        })],
+        output: svg_output(),
+    };
+    let out = run_job(&png_input(1000, 500), &job, &mut |_| {}).unwrap();
+    let text = String::from_utf8(out.bytes).unwrap();
+    assert!(
+        text.contains(r#"width="100" height="50" viewBox="0 0 1000 500""#),
+        "{}",
+        &text[..text.len().min(300)]
+    );
+    assert_eq!((out.width, out.height), (100, 50));
 }
