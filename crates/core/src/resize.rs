@@ -101,7 +101,7 @@ fn scale_dimension(known: u32, other_src: u32, known_src: u32) -> u32 {
     value.max(1) as u32
 }
 
-fn fit_inside(src_w: u32, src_h: u32, box_w: u32, box_h: u32) -> (u32, u32) {
+pub(crate) fn fit_inside(src_w: u32, src_h: u32, box_w: u32, box_h: u32) -> (u32, u32) {
     let ratio = f64::min(box_w as f64 / src_w as f64, box_h as f64 / src_h as f64);
     (
         ((src_w as f64 * ratio).round() as u32).max(1),

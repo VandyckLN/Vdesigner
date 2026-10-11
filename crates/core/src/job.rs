@@ -1,7 +1,10 @@
 use crate::{
-    adjust, decode, denoise, encode, error::CoreError, is_svg, rasterize_svg, resize,
-    resize::target_size, sharpen, trace_svg, AdjustSpec, DenoiseSpec, EncodeSpec, FitMode,
-    OutputFormat, ResizeSpec, SharpenSpec, TraceMode, TRACE_MAX_SIDE,
+    adjust, decode, denoise, encode,
+    error::CoreError,
+    is_svg, rasterize_svg, resize,
+    resize::{fit_inside, target_size},
+    sharpen, trace_svg, AdjustSpec, DenoiseSpec, EncodeSpec, FitMode, OutputFormat, ResizeSpec,
+    SharpenSpec, TraceMode, TRACE_MAX_SIDE,
 };
 use image::DynamicImage;
 use serde::{Deserialize, Serialize};
@@ -63,17 +66,41 @@ pub fn run_job_cancellable(
 
     // Requested size: follow every Resize step on dimensions only.
     let (mut w, mut h) = (image.width(), image.height());
+    let mut steps = Vec::with_capacity(job.steps.len());
     for step in &job.steps {
-        if let Step::Resize(spec) = step {
+        let mut step = step.clone();
+        if let Step::Resize(spec) = &mut step {
+            let exact = fits_exactly(w, h, spec);
             (w, h) = target_size(w, h, spec);
+            if exact {
+                // Scaling both sides would round each apart, and the box could
+                // come out a pixel or two larger than the fitted picture: a
+                // clear pad the person never asked for, which turns Foto
+                // original into a PNG. The long side alone derives the other.
+                if spec.width >= spec.height {
+                    spec.height = None;
+                } else {
+                    spec.width = None;
+                }
+            }
         }
+        steps.push(step);
     }
     let ratio = detail_ratio(image.width().max(image.height()), w.max(h));
     let scaled_job = Job {
-        steps: job.steps.iter().map(|s| scale_step(s, ratio)).collect(),
+        steps: steps.iter().map(|s| scale_step(s, ratio)).collect(),
         output: job.output,
     };
     execute(image, &scaled_job, progress, cancel, Some((w, h)))
+}
+
+/// A Contain box with both sides that the picture fills at the requested size,
+/// so it pads nothing.
+fn fits_exactly(w: u32, h: u32, spec: &ResizeSpec) -> bool {
+    match (spec.fit, spec.width, spec.height) {
+        (FitMode::Contain, Some(bw), Some(bh)) => fit_inside(w, h, bw, bh) == (bw, bh),
+        _ => false,
+    }
 }
 
 /// How much larger than the requested size an SVG job's resize steps run, so

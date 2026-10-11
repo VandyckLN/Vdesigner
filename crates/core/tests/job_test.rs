@@ -326,6 +326,42 @@ fn embeds_the_source_resolution_even_when_exporting_small() {
     assert_eq!((out.width, out.height), (100, 50));
 }
 
+/// What the Editor sends with Manter proporção unchecked: both sides, Contain,
+/// a clear pad. At the requested size the box fits the photo exactly, so the
+/// enlarged working copy must not grow a clear row from rounding each side
+/// apart, or Foto original turns into a PNG.
+fn embed_into_an_exact_box(src: (u32, u32), side: (u32, u32)) -> (String, u32, u32) {
+    let job = Job {
+        steps: vec![Step::Resize(ResizeSpec {
+            width: Some(side.0),
+            height: Some(side.1),
+            fit: FitMode::Contain,
+            pad_color: [0, 0, 0, 0],
+        })],
+        output: embed_output(),
+    };
+    let out = run_job(&png_input(src.0, src.1), &job, &mut |_| {}).unwrap();
+    // The SVG still says the size that was asked for.
+    assert_eq!((out.width, out.height), side);
+    let (mime, bytes) = common::embedded_picture(&String::from_utf8(out.bytes).unwrap());
+    let picture = image::load_from_memory(&bytes).unwrap();
+    (mime, picture.width(), picture.height())
+}
+
+#[test]
+fn embed_keeps_jpeg_when_the_box_has_the_photo_proportion() {
+    // 1920x1080 into 1000x563 runs at 1920x1081: one clear row before the fix.
+    let (mime, w, h) = embed_into_an_exact_box((1920, 1080), (1000, 563));
+    assert_eq!(mime, "image/jpeg", "{w}x{h}");
+}
+
+#[test]
+fn embed_keeps_jpeg_when_the_rounding_gap_is_two_pixels() {
+    // 4000x3000 into 501x376 runs at 4000x3002: two clear rows before the fix.
+    let (mime, w, h) = embed_into_an_exact_box((4000, 3000), (501, 376));
+    assert_eq!(mime, "image/jpeg", "{w}x{h}");
+}
+
 #[test]
 fn labels_the_last_stage_codificando_for_embed() {
     let job = Job {
