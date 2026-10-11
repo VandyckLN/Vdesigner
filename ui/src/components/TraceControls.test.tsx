@@ -10,7 +10,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 const base: EditorSettings = {
   width: null, height: null, lockRatio: true, fit: "Contain",
   sharpenAmount: 0, denoiseRadius: 0, brightness: 0, contrast: 0, saturation: 0,
-  format: "Svg", quality: 82, traceMode: "Color", traceColors: 8, removeBackground: true,
+  format: "Svg", quality: 82, traceMode: "Color", traceColors: 8, removeBackground: true, traceDetail: "Normal",
 };
 
 describe("TraceControls", () => {
@@ -28,6 +28,27 @@ describe("TraceControls", () => {
     expect(screen.queryByLabelText(/^Cores/)).toBeNull();
     expect(screen.queryByLabelText("Remover fundo")).toBeNull();
     expect(screen.getByText(/currentColor/)).toBeInTheDocument();
+  });
+
+  it("lista os modos com Foto primeiro", () => {
+    render(<TraceControls settings={base} onChange={vi.fn()} svgCode="<svg/>" onError={vi.fn()} />);
+    const names = screen.getAllByRole("option").map((o) => o.textContent);
+    expect(names.slice(0, 3)).toEqual([
+      expect.stringMatching(/^Foto \(fiel\)/),
+      expect.stringMatching(/^Cores \(logo/),
+      expect.stringMatching(/^Uma cor \(ícone/),
+    ]);
+  });
+
+  it("no modo Foto mostra Detalhe e esconde Cores e Remover fundo", async () => {
+    const onChange = vi.fn();
+    render(<TraceControls settings={{ ...base, traceMode: "Photo" }} onChange={onChange} svgCode="<svg/>" onError={vi.fn()} />);
+    expect(screen.queryByLabelText(/^Cores/)).toBeNull();
+    expect(screen.queryByLabelText("Remover fundo")).toBeNull();
+    const detail = screen.getByLabelText("Detalhe");
+    expect(Array.from(detail.querySelectorAll("option")).map((o) => o.textContent)).toEqual(["Normal", "Alto", "Máximo"]);
+    await userEvent.selectOptions(detail, "Max");
+    expect(onChange).toHaveBeenCalledWith({ ...base, traceMode: "Photo", traceDetail: "Max" });
   });
 
   it("copia o código SVG da prévia atual", async () => {

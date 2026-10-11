@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import type { EditorSettings, TraceMode } from "../api";
+import type { EditorSettings, TraceDetail, TraceMode } from "../api";
 
 interface TraceControlsProps {
   settings: EditorSettings;
@@ -37,11 +37,26 @@ export function TraceControls({ settings, onChange, svgCode, onError }: TraceCon
         value={settings.traceMode}
         onChange={(e) => onChange({ ...settings, traceMode: e.target.value as TraceMode })}
       >
+        <option value="Photo">Foto (fiel)</option>
         <option value="Color">Cores (logo, ilustração)</option>
         <option value="Mono">Uma cor (ícone, assinatura)</option>
       </select>
 
-      {color ? (
+      {settings.traceMode === "Photo" ? (
+        <>
+          <label htmlFor="trace-detail">Detalhe</label>
+          <select
+            id="trace-detail"
+            value={settings.traceDetail}
+            onChange={(e) => onChange({ ...settings, traceDetail: e.target.value as TraceDetail })}
+          >
+            <option value="Normal">Normal</option>
+            <option value="High">Alto</option>
+            <option value="Max">Máximo</option>
+          </select>
+          <small>Fica fiel à foto, mas o arquivo sai pesado.</small>
+        </>
+      ) : color ? (
         <>
           <label htmlFor="trace-colors">
             Cores <span className="mono">{settings.traceColors}</span>

@@ -2,8 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export type OutputFormat = "WebP" | "Avif" | "Png" | "Jpeg" | "Tiff" | "Ico" | "Svg";
-export type TraceMode = "Mono" | "Color";
-export interface TraceSpec { mode: TraceMode; colors: number; remove_background: boolean }
+export type TraceMode = "Photo" | "Color" | "Mono";
+export type TraceDetail = "Normal" | "High" | "Max";
+export interface TraceSpec { mode: TraceMode; colors: number; remove_background: boolean; detail: TraceDetail }
 export type FitMode = "Contain" | "Cover" | "Stretch";
 
 /** Mirrors vdesigner_core::Step, which serde serialises as an externally tagged enum. */
@@ -33,6 +34,7 @@ export interface EditorSettings {
   traceMode: TraceMode;
   traceColors: number;
   removeBackground: boolean;
+  traceDetail: TraceDetail;
 }
 
 const LOSSLESS_FORMATS: OutputFormat[] = ["Png", "Tiff", "Ico"];
@@ -80,6 +82,7 @@ export function buildJob(settings: EditorSettings): Job {
         mode: settings.traceMode,
         colors: settings.traceColors,
         remove_background: settings.removeBackground,
+        detail: settings.traceDetail,
       },
     },
   };

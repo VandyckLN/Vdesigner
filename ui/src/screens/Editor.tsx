@@ -19,9 +19,10 @@ const DEFAULT_SETTINGS: EditorSettings = {
   saturation: 0,
   format: "WebP",
   quality: 82,
-  traceMode: "Color",
+  traceMode: "Photo",
   traceColors: 8,
   removeBackground: true,
+  traceDetail: "Normal",
 };
 
 /** Waiting this long after the last control change keeps the preview from

@@ -153,7 +153,7 @@ fn contract_json_from_the_ui_deserializes_into_a_job() {
         r#"{"Denoise":{"radius":2}},{"Sharpen":{"amount":1,"radius":1}},"#,
         r#"{"Adjust":{"brightness":0.1,"contrast":0,"saturation":0}}],"#,
         r#""output":{"format":"WebP","quality":82,"lossless":false,"#,
-        r#""trace":{"mode":"Color","colors":8,"remove_background":true}}}"#,
+        r#""trace":{"mode":"Color","colors":8,"remove_background":true,"detail":"High"}}}"#,
     );
 
     let job: Job = serde_json::from_str(WIRE_CONTRACT_JSON).expect("contrato de fio inválido");
@@ -164,7 +164,7 @@ fn contract_json_from_the_ui_deserializes_into_a_job() {
             mode: TraceMode::Color,
             colors: 8,
             remove_background: true,
-            detail: TraceDetail::Normal,
+            detail: TraceDetail::High,
         }
     );
     assert_eq!(job.steps.len(), 4);

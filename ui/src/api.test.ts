@@ -16,6 +16,7 @@ const base: EditorSettings = {
   traceMode: "Color",
   traceColors: 8,
   removeBackground: true,
+  traceDetail: "Normal",
 };
 
 /** The exact bytes the engine receives. Kept byte-for-byte identical to the
@@ -25,20 +26,25 @@ const WIRE_CONTRACT_JSON =
   '{"steps":[{"Resize":{"width":800,"height":600,"fit":"Stretch","pad_color":[0,0,0,0]}},' +
   '{"Denoise":{"radius":2}},{"Sharpen":{"amount":1,"radius":1}},' +
   '{"Adjust":{"brightness":0.1,"contrast":0,"saturation":0}}],' +
-  '"output":{"format":"WebP","quality":82,"lossless":false,"trace":{"mode":"Color","colors":8,"remove_background":true}}}';
+  '"output":{"format":"WebP","quality":82,"lossless":false,"trace":{"mode":"Color","colors":8,"remove_background":true,"detail":"High"}}}';
 
 describe("buildJob", () => {
   it("produz um job sem etapas quando nada foi alterado", () => {
     const job = buildJob(base);
     expect(job.steps).toHaveLength(0);
     expect(job.output).toEqual({ format: "WebP", quality: 82, lossless: false,
-      trace: { mode: "Color", colors: 8, remove_background: true } });
+      trace: { mode: "Color", colors: 8, remove_background: true, detail: "Normal" } });
   });
 
   it("leva modo, cores e remoção de fundo para o job", () => {
     const job = buildJob({ ...base, format: "Svg", traceMode: "Mono", traceColors: 4, removeBackground: false });
     expect(job.output).toEqual({ format: "Svg", quality: 82, lossless: false,
-      trace: { mode: "Mono", colors: 4, remove_background: false } });
+      trace: { mode: "Mono", colors: 4, remove_background: false, detail: "Normal" } });
+  });
+
+  it("leva o detalhe do modo Foto para o job", () => {
+    const job = buildJob({ ...base, format: "Svg", traceMode: "Photo", traceDetail: "Max" });
+    expect(job.output.trace).toEqual({ mode: "Photo", colors: 8, remove_background: true, detail: "Max" });
   });
 
   it("inclui o resize quando há largura", () => {
@@ -84,6 +90,7 @@ describe("buildJob", () => {
       denoiseRadius: 2,
       sharpenAmount: 1,
       brightness: 0.1,
+      traceDetail: "High",
     });
     expect(JSON.stringify(job)).toBe(WIRE_CONTRACT_JSON);
   });

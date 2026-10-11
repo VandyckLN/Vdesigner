@@ -217,7 +217,7 @@ describe("Editor", () => {
     expect(await screen.findByText(`Tamanho ${formatBytes(1234)}`)).toBeInTheDocument();
     const job = previewSvg.mock.calls[0][0];
     expect(job.output.format).toBe("Svg");
-    expect(job.output.trace).toEqual({ mode: "Color", colors: 8, remove_background: true });
+    expect(job.output.trace).toEqual({ mode: "Photo", colors: 8, remove_background: true, detail: "Normal" });
     expect(estimate).not.toHaveBeenCalled();
     expect(screen.queryByText(/estimado/)).toBeNull();
     expect(src()).toMatch(/^data:image\/svg\+xml/);
@@ -240,7 +240,7 @@ describe("Editor", () => {
     await pickSvg();
     const copy = () => screen.getByRole("button", { name: "Copiar código SVG" });
     await waitFor(() => expect(copy()).toBeEnabled());
-    fireEvent.change(screen.getByLabelText(/^Cores/), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Detalhe"), { target: { value: "High" } });
     await waitFor(() => expect(copy()).toBeDisabled());
     second.resolve({ svg: "<svg>2</svg>" });
     await waitFor(() => expect(copy()).toBeEnabled());
@@ -252,7 +252,7 @@ describe("Editor", () => {
     await open();
     await pickSvg();
     expect(await screen.findByText(/^Tamanho /)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(/^Cores/), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Detalhe"), { target: { value: "High" } });
     await waitFor(() => expect(previewSvg).toHaveBeenCalledTimes(2));
     expect(screen.queryByText(/^Tamanho S/)).toBeNull();
     second.resolve({ svg: "<svg>22222</svg>" });
