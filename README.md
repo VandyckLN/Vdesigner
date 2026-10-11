@@ -31,8 +31,9 @@ brilho, contraste e saturação de −1 a 1.
 **Rasterizar SVG.** Vetor entra e sai como bitmap em qualquer dimensão, sem
 perder definição na subida.
 
-**Vetorizar.** Bitmap vira SVG em dois modos: Cores, para logo e ilustração, e
-Uma cor, para ícone e assinatura, com `currentColor`. O desenho sai da
+**Vetorizar.** Bitmap vira SVG em três modos: Foto (fiel), o padrão, com três
+níveis de detalhe; Cores, para logo e ilustração; e Uma cor, para ícone e
+assinatura, com `currentColor`. O desenho sai da
 resolução da imagem aberta, até 4096 px, e há botão para copiar o código SVG.
 
 **Prever antes de gastar.** A prévia recalcula ao vivo enquanto você mexe nos
@@ -135,8 +136,9 @@ um lançamento.
 Elementos `<text>` de SVG ainda não são desenhados, porque o carregamento de
 fontes do sistema não foi ligado. Um SVG com texto rasteriza sem ele.
 
-Vetorizar foto dá pôster de poucas cores e arquivo de vários MB: para foto, use
-WebP ou AVIF. Imagem abaixo de uns 100 px vetoriza com contorno grosseiro, e um
+Vetorizar foto no modo Foto leva segundos e pesa MB: uma foto de 1563 px leva
+uns 6,5 s e 4,6 MB no Normal, 8 s e 5 MB no Alto, 14 s e 5,5 MB no Máximo.
+Foto fica fiel mas pesada; para site, WebP ou AVIF continua mais leve. Imagem abaixo de uns 100 px vetoriza com contorno grosseiro, e um
 detalhe de até 2 px pode sumir. Parta do maior arquivo que tiver.
 
 O empacotamento hoje é só para Windows. O motor em si não tem nada preso à

@@ -29,14 +29,16 @@ export function Guide() {
         </dd>
         <dt>Vetorizar (bitmap para SVG)</dt>
         <dd>
-          Escolha SVG (vetorizado) no formato de saída. Cores serve para logo e ilustração: o número
+          Escolha SVG (vetorizado) no formato de saída. Foto (fiel) é o padrão: guarda as nuances da
+          foto, e Detalhe (Normal, Alto, Máximo) troca peso por fidelidade. Uma foto de 1563 px leva
+          uns 6,5 s e 4,6 MB no Normal, 8 s e 5 MB no Alto, 14 s e 5,5 MB no Máximo. Cores serve para logo e ilustração: o número
           é o teto de cores, e Remover fundo torna transparente a cor da borda em toda a imagem,
           inclusive dentro das letras. Uma cor serve para ícone e assinatura e sai em currentColor,
           que herda a cor do texto no site; por isso a prévia aparece preta, e no site ela toma a cor do texto. Copiar código SVG leva o código pronto para colar no
           HTML. O desenho sai da resolução da imagem aberta, até 4096 px, mesmo que você exporte
           pequeno: parta do maior arquivo que tiver. Abaixo de uns 100 px o contorno sai grosseiro,
-          e imagem grande leva alguns segundos. Foto vira pôster de poucas cores e arquivo de vários
-          MB: para foto, use WebP ou AVIF.
+          e imagem grande leva alguns segundos. Foto fica fiel mas pesada; para site, WebP ou AVIF
+          continua mais leve.
         </dd>
         <dt>Prévia e tamanho</dt>
         <dd>

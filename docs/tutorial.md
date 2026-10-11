@@ -51,11 +51,14 @@ Os três filtros são independentes, e a prévia mostra o efeito ao vivo:
   comprimido. Em excesso, apaga detalhe fino.
 - **Brilho, contraste e saturação**, de −1 a 1. Zero deixa como está.
 
-### Vetorizar um logo, ícone ou assinatura
+### Vetorizar uma foto, um logo, um ícone ou uma assinatura
 
 O caminho inverso: abra um bitmap e escolha **SVG (vetorizado)** no formato de
-saída. Há dois modos.
+saída. Há três modos.
 
+- **Foto (fiel)** é o padrão e serve para foto. Guarda as nuances em vez de
+  achatar em poucas cores, e o fundo fica sempre. **Detalhe** escolhe entre
+  Normal, Alto e Máximo: mais detalhe, arquivo maior e espera maior.
 - **Cores** serve para logo e ilustração. O número de cores é um teto, não uma
   meta: um logo de 4 cores sai igual com 8. **Remover fundo** torna transparente
   a cor da borda em toda a imagem, inclusive dentro das letras.
@@ -73,8 +76,11 @@ arquivo que houver. Abaixo de uns 100 px o contorno sai grosseiro, e um detalhe
 de até 2 px pode sumir.
 
 Quanto demora: logo de até 2000 px em menos de 2 s, de 4096 px em uns 6 s, foto
-grande em até 40 s. A janela não trava. Foto vira pôster de poucas cores e
-arquivo de vários MB: para foto, use WebP ou AVIF.
+grande em até 40 s. A janela não trava.
+
+No modo Foto, uma foto de 1563 px leva uns 6,5 s e sai com 4,6 MB no Normal,
+uns 8 s e 5 MB no Alto, uns 14 s e 5,5 MB no Máximo. Foto fica fiel mas
+pesada; para site, WebP ou AVIF continua mais leve.
 
 Um SVG aberto não pode ser vetorizado de novo.
 

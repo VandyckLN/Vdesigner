@@ -19,3 +19,4 @@ como não executado, nunca como passou.
 | 7 | Mudar Cores e clicar em Copiar código SVG na hora | O botão espera a prévia nova. |
 | 8 | Logo de 1000 px ou mais, exportado a 32 px de largura | O `.svg` sai com `width="32"`. Aberto no navegador com zoom de 800%, a borda continua lisa, sem degrau de miniatura. |
 | 9 | Favicon de 64 a 128 px com borda suavizada, modo Cores 8 | Sem filete de cor de mistura entre duas cores vizinhas e sem halo em volta das formas. A 64 px, o contorno grosseiro é esperado. |
+| 10 | Foto de uns 1500 px (como a `27.png`), modo Foto em Normal, Alto e Máximo | Escolher SVG (vetorizado) já abre em Foto (fiel), sem Cores nem Remover fundo à vista. A prévia sai fiel, sem pôster nem cor estourada, e o fundo continua. Em versão de release, por volta de 6,5 s e 4,6 MB no Normal, 8 s e 5 MB no Alto, 14 s e 5,5 MB no Máximo. |
