@@ -5,11 +5,22 @@ on:
     branches: [main]
   pull_request:
 
+# O token padrão vem com escrita; nada aqui publica nada.
+permissions:
+  contents: read
+
+# Um push novo na mesma ref cancela a execução anterior.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   rust:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       # A versão vai no nome da ref; `@master` não passa toolchain nenhuma e a
       # action aborta com "'toolchain' is a required input".
       - uses: dtolnay/rust-toolchain@1.98
@@ -31,6 +42,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
