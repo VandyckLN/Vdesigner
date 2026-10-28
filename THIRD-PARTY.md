@@ -29,6 +29,7 @@ full transitive dependency graph.
 | tauri | Apache-2.0 OR MIT |
 | tauri-plugin-dialog | Apache-2.0 OR MIT |
 | serde_json | MIT OR Apache-2.0 |
+| windows (apenas em Windows) | MIT OR Apache-2.0 |
 
 ## JavaScript packages (`ui/package.json`)
 

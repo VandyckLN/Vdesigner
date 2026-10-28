@@ -43,6 +43,19 @@ pesa mais e não ganha detalhe. Na Foto original, Caber dentro numa proporção
 diferente guarda a foto menor, e Preencher e recortar pode ampliar o recorte.
 Há botão para copiar o código SVG.
 
+**Converter direto do Explorer.** Selecione imagens no Explorer e aperte
+`Ctrl+Alt+V`: uma roda abre no meio da tela com os formatos que servem para
+aquela seleção, e um clique converte todas de uma vez, gravando
+`<nome>-convertido.<ext>` ao lado de cada original. Nada é sobrescrito — nem o
+original, nem a saída de um passe anterior, que ganha número no fim do nome.
+As setas andam pelas fatias, `Enter` confirma e `Esc` fecha sem gravar. A roda
+só oferece o que vale para todos os arquivos juntos: misturar um PNG e um SVG
+tira SVG da lista, porque metade da seleção não pode virar SVG. Arquivos que o
+Vdesigner não abre ficam de fora, e a roda diz quantos. Um arquivo com defeito
+no meio do lote não interrompe os outros: o andamento mostra o motivo e segue.
+Para ICO, use o Editor — o formato aceita 256 px por lado e a roda não sabe o
+tamanho das imagens antes de abri-las.
+
 **Prever antes de gastar.** A prévia recalcula ao vivo enquanto você mexe nos
 controles, e a faixa de dados mostra a estimativa de tamanho do arquivo final.
 Exportações longas reportam progresso por etapa.
@@ -160,17 +173,23 @@ arquivo que tiver.
 O empacotamento hoje é só para Windows. O motor em si não tem nada preso à
 plataforma, e o Tauri suporta Linux e macOS — falta o trabalho de build e teste.
 
-O processamento é de uma imagem por vez. O motor já aceita lotes, porque um
-`Job` é só dado, mas a tela para isso ainda não existe.
+Dentro do app o processamento é de uma imagem por vez. A roda do Explorer
+converte em lote, mas com os ajustes padrão: redimensionar e filtrar em lote,
+com prévia, ainda não tem tela.
 
-A captura de tela é só para Windows. O `screen.rs` é o único módulo preso à
-plataforma, e é ele que precisaria de uma implementação equivalente em Linux e
-macOS.
+A captura de tela e a leitura da seleção do Explorer são só para Windows.
+`screen.rs` e `explorer.rs` são os dois únicos módulos presos à plataforma, e
+são eles que precisariam de uma implementação equivalente em Linux e macOS. A
+decisão de quais arquivos entram e de quais formatos a roda oferece não está
+neles: mora no motor, em `wheel.rs`, e é testada em toda plataforma.
 
-O atalho vale enquanto o Vdesigner estiver aberto. Não há ícone de bandeja nem
-início com o Windows, e o atalho ainda não é configurável: se `Ctrl+Alt+C` já
-estiver tomado por outro programa, o app avisa e o botão “Capturar cor” na tela
-de Cores é a saída.
+Os atalhos valem enquanto o Vdesigner estiver aberto. Não há ícone de bandeja
+nem início com o Windows, e eles ainda não são configuráveis. Se `Ctrl+Alt+C`
+já estiver tomado por outro programa, o app avisa e o botão “Capturar cor” na
+tela de Cores é a saída. Se `Ctrl+Alt+V` estiver tomado, o app avisa também —
+mas aí não há saída equivalente, porque não existe jeito de a janela do app
+saber quais arquivos estão destacados no Explorer. Abrir as imagens no Editor é
+o contorno.
 
 ## Autoria
 

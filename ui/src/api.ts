@@ -188,9 +188,41 @@ export interface OverlayGeometry {
   monitors: MonitorInfo[];
 }
 
+export type SelectionKind = "Raster" | "Svg";
+
+export interface SelectedFile {
+  path: string;
+  kind: SelectionKind;
+}
+
+/** What the wheel window draws: the files it will act on, the formats it may
+ *  offer for all of them, and everything it is leaving behind. */
+export interface WheelState {
+  files: SelectedFile[];
+  skipped: string[];
+  truncated: boolean;
+  targets: OutputFormat[];
+}
+
+export interface WheelProgress {
+  current: number;
+  total: number;
+  path: string;
+  /** `null` when the file converted; the reason when it did not. */
+  error: string | null;
+}
+
+export interface WheelOutcome {
+  written: string[];
+  /** One `[path, reason]` per file that failed. */
+  failed: [string, string][];
+}
+
 const COLOR_PICKED_EVENT = "color-picked";
 const SHORTCUT_UNAVAILABLE_EVENT = "shortcut-unavailable";
 const PICK_FAILED_EVENT = "pick-failed";
+const WHEEL_FAILED_EVENT = "wheel-failed";
+const WHEEL_PROGRESS_EVENT = "wheel-progress";
 
 export const api = {
   openImage: (path: string) => invoke<ImageInfo>("open_image", { path }),
@@ -217,4 +249,12 @@ export const api = {
   onPickFailed: (handler: (mensagem: string) => void): Promise<UnlistenFn> =>
     listen<{ mensagem: string }>(PICK_FAILED_EVENT, (event) => handler(event.payload.mensagem)),
   gradientCss: (palette: Palette, nome: string) => invoke<string>("gradient_css", { palette, nome }),
+  startWheel: () => invoke<WheelState>("start_wheel"),
+  cancelWheel: () => invoke<void>("cancel_wheel"),
+  convertSelection: (target: OutputFormat, quality: number) =>
+    invoke<WheelOutcome>("convert_selection", { target, quality }),
+  onWheelProgress: (handler: (progress: WheelProgress) => void): Promise<UnlistenFn> =>
+    listen<WheelProgress>(WHEEL_PROGRESS_EVENT, (event) => handler(event.payload)),
+  onWheelFailed: (handler: (mensagem: string) => void): Promise<UnlistenFn> =>
+    listen<{ mensagem: string }>(WHEEL_FAILED_EVENT, (event) => handler(event.payload.mensagem)),
 };

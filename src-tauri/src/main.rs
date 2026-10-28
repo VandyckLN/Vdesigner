@@ -3,6 +3,7 @@
 use vdesigner::commands;
 use vdesigner::picker::Picker;
 use vdesigner::session::Session;
+use vdesigner::wheel::Wheel;
 
 fn main() {
     tauri::Builder::default()
@@ -13,6 +14,7 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .manage(Session::default())
         .manage(Picker::default())
+        .manage(Wheel::default())
         .invoke_handler(tauri::generate_handler![
             commands::open_image,
             commands::preview,
@@ -27,13 +29,19 @@ fn main() {
             commands::start_pick,
             commands::pick_at,
             commands::cancel_pick,
+            commands::start_wheel,
+            commands::cancel_wheel,
+            commands::convert_selection,
         ])
         .setup(|app| {
             use tauri::{Emitter, Manager};
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
-            const ATALHO: &str = "Ctrl+Alt+C";
+            const ATALHO_COR: &str = "Ctrl+Alt+C";
+            const ATALHO_RODA: &str = "Ctrl+Alt+V";
             let combinacao = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyC);
+            let combinacao_roda =
+                Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyV);
             let handle = app.handle().clone();
 
             // Registration fails silently by nature when another program
@@ -72,9 +80,43 @@ fn main() {
                 })
                 .is_ok();
 
-            if !registrado {
+            // The wheel reads the File Explorer selection, so unlike the
+            // eyedropper it has nothing to fall back on: there is no button
+            // inside the app that could stand in for "the files I have
+            // highlighted out there". A dead shortcut here is the whole
+            // feature gone, which is why it warns the same way.
+            let registrado_roda = app
+                .global_shortcut()
+                .on_shortcut(combinacao_roda, move |app_handle, _shortcut, event| {
+                    if event.state() != tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        return;
+                    }
+                    let main_handle = app_handle.clone();
+                    let _ = app_handle.run_on_main_thread(move || {
+                        if let Some(wheel) = main_handle.try_state::<vdesigner::wheel::Wheel>() {
+                            // The shortcut has no caller to return an error
+                            // to, so a failure has to reach the main window
+                            // or the person just sees nothing happen.
+                            if let Err(mensagem) =
+                                vdesigner::commands::open_wheel(&main_handle, &wheel)
+                            {
+                                let _ = main_handle.emit_to(
+                                    "main",
+                                    "wheel-failed",
+                                    WheelFailed { mensagem },
+                                );
+                            }
+                        }
+                    });
+                })
+                .is_ok();
+
+            for (atalho, ok) in [(ATALHO_COR, registrado), (ATALHO_RODA, registrado_roda)] {
+                if ok {
+                    continue;
+                }
                 let payload = ShortcutUnavailable {
-                    atalho: ATALHO.to_string(),
+                    atalho: atalho.to_string(),
                 };
                 let _ = handle.emit_to("main", "shortcut-unavailable", payload.clone());
 
@@ -94,11 +136,19 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == vdesigner::picker::OVERLAY_LABEL {
-                if let tauri::WindowEvent::Destroyed = event {
-                    use tauri::Manager;
+            if let tauri::WindowEvent::Destroyed = event {
+                use tauri::Manager;
+                if window.label() == vdesigner::picker::OVERLAY_LABEL {
                     if let Some(picker) = window.try_state::<vdesigner::picker::Picker>() {
                         picker.disarm();
+                    }
+                }
+                // The selection is small, but leaving it armed would let a
+                // later `convert_selection` run against files the person
+                // already dismissed the wheel for.
+                if window.label() == vdesigner::wheel::WHEEL_LABEL {
+                    if let Some(wheel) = window.try_state::<vdesigner::wheel::Wheel>() {
+                        wheel.disarm();
                     }
                 }
             }
@@ -117,5 +167,10 @@ struct ShortcutUnavailable {
 
 #[derive(Clone, serde::Serialize)]
 struct PickFailed {
+    mensagem: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct WheelFailed {
     mensagem: String,
 }
