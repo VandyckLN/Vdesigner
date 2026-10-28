@@ -1,0 +1,111 @@
+name: instalador de teste
+
+# Produz um instalador para testar à mão, antes de marcar uma versão.
+#
+# Não é o caminho de release: não assina, não cria release e não toca em
+# nenhum segredo. O que sai daqui serve para instalar por cima da cópia já
+# instalada e ver a mudança funcionando numa máquina real — o que o resto do
+# CI não faz, porque `cargo test` não abre janela, não lê o Explorer e não
+# registra atalho global.
+on:
+  # As branches de trabalho constroem sozinhas, porque `workflow_dispatch` só
+  # fica disponível depois que o arquivo chega na branch padrão.
+  push:
+    branches: ["claude/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: instalador-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  instalador:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@1.98
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      # O rav1e, dentro do ravif, monta suas rotinas de AVIF em assembly e não
+      # compila sem o montador. Mesma razão do ci.yml e do release.yml.
+      - name: Install NASM
+        shell: pwsh
+        run: |
+          choco install nasm -y --no-progress
+          echo "C:\Program Files\NASM" >> $env:GITHUB_PATH
+
+      - run: npm --prefix ui ci
+
+      # Com `createUpdaterArtifacts` ligado, o bundler exige a chave privada de
+      # assinatura e aborta sem ela. Desligar isso só para este build é melhor
+      # que gerar um par descartável: um .sig que não confere com a chave
+      # pública do tauri.conf.json é pior que nenhum .sig, porque pareceria
+      # atualizável e não seria.
+      - name: Desligar artefatos de atualização só neste build
+        shell: pwsh
+        run: |
+          '{ "bundle": { "createUpdaterArtifacts": false } }' |
+            Out-File -Encoding utf8 "$env:RUNNER_TEMP/sem-updater.json"
+
+      # A CLI do Tauri vem pré-compilada em @tauri-apps/cli. Chamada pelo node
+      # e não por node_modules/.bin porque o pwsh não executa o script sem
+      # extensão que o npm põe ali.
+      - name: cargo tauri build
+        run: node ui/node_modules/@tauri-apps/cli/tauri.js build --config "$env:RUNNER_TEMP/sem-updater.json"
+        shell: pwsh
+
+      - name: Conferir que o instalador saiu
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem -Recurse -Filter *-setup.exe target/release/bundle/nsis -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if (-not $setup) { throw "nenhum instalador foi produzido." }
+          Write-Host "instalador: $($setup.Name)"
+          Get-FileHash $setup.FullName -Algorithm SHA256 | Format-List
+
+      # `upload-artifact` recusa nome de artefato com barra, e o nome de branch
+      # tem uma. Sem isso o passo de upload falharia no fim, depois do build
+      # inteiro ter rodado.
+      - name: Nome de artefato sem barra
+        id: nome
+        shell: pwsh
+        run: |
+          $slug = "${{ github.ref_name }}" -replace '[\\/:<>|*?"]', '-'
+          "slug=$slug" | Out-File -Encoding utf8 -Append $env:GITHUB_OUTPUT
+
+      - name: Versão e commit deste build
+        shell: pwsh
+        run: |
+          $versao = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          @(
+            "Build de teste do Vdesigner",
+            "",
+            "versao no tauri.conf.json: $versao",
+            "commit: ${{ github.sha }}",
+            "branch: ${{ github.ref_name }}",
+            "",
+            "Nao assinado e sem artefato de atualizacao: serve para instalar e",
+            "testar a mao, nao para publicar nem para atualizar por dentro do app.",
+            "O Windows vai avisar que o publicador e desconhecido."
+          ) | Out-File -Encoding utf8 LEIA-ME-build-de-teste.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vdesigner-instalador-${{ steps.nome.outputs.slug }}-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            target/release/bundle/nsis/*-setup.exe
+            target/release/vdesigner.exe
+            LEIA-ME-build-de-teste.txt
