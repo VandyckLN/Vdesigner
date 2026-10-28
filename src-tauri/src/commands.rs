@@ -11,8 +11,8 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, State};
 use vdesigner_core::{
     classify_selection, decode, format as format_color_value, harmonies, is_svg, parse_hex, ramp,
-    rasterize_svg, run_job, run_job_cancellable, run_preview, wheel_targets, ColorFormat,
-    EncodeSpec, Job, OutputFormat, Palette,
+    rasterize_svg, run_job, run_job_cancellable, run_preview, wheel_encode_spec, wheel_targets,
+    ColorFormat, EncodeSpec, Job, OutputFormat, Palette,
 };
 
 const PREVIEW_MAX_SIDE: u32 = 2048;
@@ -622,19 +622,16 @@ pub async fn convert_selection(
     app: tauri::AppHandle,
     wheel: State<'_, Wheel>,
     target: OutputFormat,
-    quality: u8,
 ) -> CommandResult<WheelOutcome> {
     let files = wheel.take_for(target).map_err(|e| e.to_string())?;
     close_wheel(&app, &wheel);
 
+    // No steps: the wheel re-encodes and nothing else. How to encode is the
+    // engine's call, not this layer's — `wheel_encode_spec` is where the
+    // quality and the SVG mode are decided, and where they are tested.
     let job = Job {
         steps: Vec::new(),
-        output: EncodeSpec {
-            format: target,
-            quality,
-            lossless: false,
-            trace: Default::default(),
-        },
+        output: wheel_encode_spec(target),
     };
     let extension = extension_for(target);
     let total = files.len() as u32;

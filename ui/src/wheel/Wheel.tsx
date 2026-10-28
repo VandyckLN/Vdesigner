@@ -2,12 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type OutputFormat, type WheelProgress, type WheelState } from "../api";
 import "./wheel.css";
 
-/** Quality for the lossy targets. The wheel has no controls on purpose — it
- *  exists to convert without opening the app, and anything that needs a dial
- *  needs the Editor. 90 is the point where WebP and AVIF stop showing
- *  artefacts on photographic content at normal viewing size. */
-export const QUALIDADE_PADRAO = 90;
-
 /** Label on each slice. Short because it is rendered inside an arc. */
 const ROTULOS: Record<OutputFormat, string> = {
   WebP: "WebP",
@@ -111,7 +105,7 @@ export function Wheel() {
     (target: OutputFormat) => {
       if (convertendo.current) return;
       convertendo.current = true;
-      void api.convertSelection(target, QUALIDADE_PADRAO).catch((e: unknown) => {
+      void api.convertSelection(target).catch((e: unknown) => {
         convertendo.current = false;
         setErro(String(e));
       });

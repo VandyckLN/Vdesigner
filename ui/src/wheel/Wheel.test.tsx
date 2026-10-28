@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { centroDaFatia, fatia, QUALIDADE_PADRAO, Wheel } from "./Wheel";
+import { centroDaFatia, fatia, Wheel } from "./Wheel";
 
 const startWheel = vi.fn();
 const cancelWheel = vi.fn();
@@ -12,7 +12,7 @@ vi.mock("../api", () => ({
   api: {
     startWheel: () => startWheel(),
     cancelWheel: () => cancelWheel(),
-    convertSelection: (target: string, quality: number) => convertSelection(target, quality),
+    convertSelection: (target: string) => convertSelection(target),
     onWheelProgress: (handler: (p: unknown) => void) => onWheelProgress(handler),
   },
 }));
@@ -68,7 +68,7 @@ describe("Wheel", () => {
     render(<Wheel />);
     const itens = await screen.findAllByRole("menuitem");
     await userEvent.click(itens[2]);
-    expect(convertSelection).toHaveBeenCalledWith("Png", QUALIDADE_PADRAO);
+    expect(convertSelection).toHaveBeenCalledWith("Png");
   });
 
   it("não dispara uma segunda conversão enquanto a primeira está em voo", async () => {
@@ -87,14 +87,14 @@ describe("Wheel", () => {
     await screen.findAllByRole("menuitem");
     await userEvent.keyboard("{ArrowRight}{ArrowRight}");
     await userEvent.keyboard("{Enter}");
-    expect(convertSelection).toHaveBeenCalledWith("Png", QUALIDADE_PADRAO);
+    expect(convertSelection).toHaveBeenCalledWith("Png");
   });
 
   it("a seta para a esquerda dá a volta no começo da lista", async () => {
     render(<Wheel />);
     await screen.findAllByRole("menuitem");
     await userEvent.keyboard("{ArrowLeft}{Enter}");
-    expect(convertSelection).toHaveBeenCalledWith("Svg", QUALIDADE_PADRAO);
+    expect(convertSelection).toHaveBeenCalledWith("Svg");
   });
 
   it("Esc fecha sem converter nada", async () => {

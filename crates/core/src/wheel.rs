@@ -19,7 +19,8 @@
 //!
 //! [`decode::detect_format`]: crate::detect_format
 
-use crate::encode::OutputFormat;
+use crate::encode::{EncodeSpec, OutputFormat};
+use crate::trace::{TraceMode, TraceSpec};
 
 /// Upper bound on the files one wheel acts upon.
 ///
@@ -226,6 +227,43 @@ pub fn output_stem(source_stem: &str, attempt: usize) -> String {
         format!("{source_stem}-{CONVERTED_SUFFIX}")
     } else {
         format!("{source_stem}-{CONVERTED_SUFFIX}-{attempt}")
+    }
+}
+
+/// Quality the wheel encodes the lossy targets at.
+///
+/// The wheel has no controls, by design: it exists to convert without opening
+/// the app, and anything that needs a dial needs the Editor. 90 is where WebP
+/// and AVIF stop showing artefacts on photographic content at normal viewing
+/// size, which makes it the defensible choice for a batch nobody is watching.
+pub const WHEEL_QUALITY: u8 = 90;
+
+/// How the wheel encodes `target`.
+///
+/// Lives here rather than in the command because it is a decision, and
+/// decisions belong to the engine — the interface only carries the chosen
+/// target across.
+///
+/// **The SVG mode is the point of this function.** [`TraceSpec::default`] is
+/// `Color` with eight colours and background removal, which is the right
+/// default for the Editor, where a person picked SVG for a logo and can see
+/// the result before exporting. It is the wrong one here: the wheel fires from
+/// a keystroke with nothing to adjust, and tracing a photograph in `Color`
+/// posterises it into something painted while costing far more time than any
+/// other target in the batch. `Embed` keeps the picture itself inside the SVG
+/// — faithful to any input, fast, and the one mode that cannot ruin a file the
+/// person never got to preview.
+pub fn wheel_encode_spec(target: OutputFormat) -> EncodeSpec {
+    EncodeSpec {
+        format: target,
+        quality: WHEEL_QUALITY,
+        // WebP's lossless mode is a separate switch from quality, and at 90
+        // the lossy path is what is being asked for.
+        lossless: false,
+        trace: TraceSpec {
+            mode: TraceMode::Embed,
+            ..TraceSpec::default()
+        },
     }
 }
 

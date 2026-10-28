@@ -56,6 +56,14 @@ no meio do lote não interrompe os outros: o andamento mostra o motivo e segue.
 Para ICO, use o Editor — o formato aceita 256 px por lado e a roda não sabe o
 tamanho das imagens antes de abri-las.
 
+Nas duas pontas do SVG a roda escolhe o caminho conservador, porque ela não
+tem controles para você corrigir o rumo. SVG que entra é rasterizado no tamanho
+próprio do vetor. Imagem que sai como SVG usa o modo Foto original, que guarda
+a própria imagem dentro do arquivo: fica idêntica e leve. Vetorizar de verdade
+— transformar a foto em formas — é escolha do Editor, onde você vê o resultado
+antes de exportar; em lote, disparado por uma tecla, o vetorizador demoraria
+muito e devolveria algo com cara de pintura em cada foto.
+
 **Prever antes de gastar.** A prévia recalcula ao vivo enquanto você mexe nos
 controles, e a faixa de dados mostra a estimativa de tamanho do arquivo final.
 Exportações longas reportam progresso por etapa.

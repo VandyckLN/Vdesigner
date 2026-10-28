@@ -29,15 +29,22 @@ como não executado, nunca como passou.
 | 10 | Apertar `Esc` com a roda aberta | A roda fecha e nenhum arquivo é gravado. |
 | 11 | Selecionar mais de 100 arquivos | A roda mostra 100 e a faixa avisando que a seleção passou do limite. |
 | 12 | Selecionar um PNG truncado junto de 2 PNGs bons | Os 2 bons são convertidos; o andamento mostra o motivo da falha do truncado. O lote não para no primeiro erro. |
-| 13 | Selecionar um arquivo de resultado de busca do Explorer | Ou converte normalmente, ou é reportado como fora da seleção. O que não pode é a roda abrir vazia sem explicação. |
-| 14 | `Ctrl+Alt+V` já tomado por outro programa | Ao abrir, o app mostra a faixa avisando qual atalho não foi registrado. |
+| 13 | Selecionar **só** um SVG | 5 fatias, sem SVG. Converter em PNG dá um PNG no tamanho próprio do vetor. |
+| 14 | Selecionar uma foto e converter em **SVG** | Sai um `.svg` que abre no navegador idêntico à foto, e com peso parecido — é o modo Foto original, não vetorização. Não deve demorar mais que os outros formatos nem sair posterizado. |
+| 15 | Selecionar um arquivo de resultado de busca do Explorer | Ou converte normalmente, ou é reportado como fora da seleção. O que não pode é a roda abrir vazia sem explicação. |
+| 16 | `Ctrl+Alt+V` já tomado por outro programa | Ao abrir, o app mostra a faixa avisando qual atalho não foi registrado. |
 
 Para o item 3, faça o item 2 duas vezes sem apagar nada entre as duas.
 
 Para o item 12, trunque uma cópia de um PNG cortando o arquivo pela metade
 (`fsutil file seteof` ou qualquer editor hexadecimal serve).
 
-Para o item 14, registre `Ctrl+Alt+V` em outro programa antes de abrir o
+Para o item 14, o ponto é confirmar que a roda usa `TraceMode::Embed` e não o
+`TraceSpec::default()`, que é `Color`. Se o SVG sair com cara de pintura, com
+poucas cores ou com o fundo removido, a roda está vetorizando quando não
+devia — e numa pasta com vinte fotos isso levaria minutos.
+
+Para o item 16, registre `Ctrl+Alt+V` em outro programa antes de abrir o
 Vdesigner. O PowerToys permite isso pelo Gerenciador de Teclado. Confirme
 também que o `Ctrl+Alt+C` do conta-gotas continua funcionando: os dois
 atalhos são registrados de forma independente, e um falhar não pode derrubar

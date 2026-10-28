@@ -1,6 +1,7 @@
 use vdesigner_core::{
-    accepts, classify_selection, output_stem, wheel_targets, OutputFormat, SelectedFile,
-    SelectionKind, CONVERTED_SUFFIX, MAX_SELECTION,
+    accepts, classify_selection, output_stem, wheel_encode_spec, wheel_targets, OutputFormat,
+    SelectedFile, SelectionKind, TraceMode, TraceSpec, CONVERTED_SUFFIX, MAX_SELECTION,
+    WHEEL_QUALITY,
 };
 
 fn paths(list: &[&str]) -> Vec<String> {
@@ -271,4 +272,34 @@ fn the_marker_is_part_of_every_name_so_outputs_are_recognisable() {
     for attempt in [0, 1, 99] {
         assert!(output_stem("foto", attempt).contains(CONVERTED_SUFFIX));
     }
+}
+
+#[test]
+fn the_wheel_embeds_the_picture_instead_of_tracing_it() {
+    // TraceSpec::default() is Color with eight colours and background
+    // removal, which would posterise a photograph into something painted —
+    // and the wheel fires from a keystroke with nothing to preview or
+    // adjust. Embed is the one mode faithful to any input.
+    let spec = wheel_encode_spec(OutputFormat::Svg);
+    assert_eq!(spec.trace.mode, TraceMode::Embed);
+    assert_ne!(TraceSpec::default().mode, TraceMode::Embed);
+}
+
+#[test]
+fn every_offered_target_encodes_at_the_wheel_quality() {
+    for target in wheel_targets(&[raster(r"C:\x\a.png")]) {
+        let spec = wheel_encode_spec(target);
+        assert_eq!(spec.format, target);
+        assert_eq!(spec.quality, WHEEL_QUALITY);
+        // Quality must stay in the range `encode` accepts, or every lossy
+        // target in the batch would fail on an invalid-parameter error.
+        assert!((1..=100).contains(&spec.quality));
+    }
+}
+
+#[test]
+fn the_wheel_does_not_ask_for_webp_lossless() {
+    // Lossless is a separate switch from quality; at 90 the lossy path is
+    // what was asked for.
+    assert!(!wheel_encode_spec(OutputFormat::WebP).lossless);
 }

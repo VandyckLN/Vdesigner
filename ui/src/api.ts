@@ -251,8 +251,8 @@ export const api = {
   gradientCss: (palette: Palette, nome: string) => invoke<string>("gradient_css", { palette, nome }),
   startWheel: () => invoke<WheelState>("start_wheel"),
   cancelWheel: () => invoke<void>("cancel_wheel"),
-  convertSelection: (target: OutputFormat, quality: number) =>
-    invoke<WheelOutcome>("convert_selection", { target, quality }),
+  convertSelection: (target: OutputFormat) =>
+    invoke<WheelOutcome>("convert_selection", { target }),
   onWheelProgress: (handler: (progress: WheelProgress) => void): Promise<UnlistenFn> =>
     listen<WheelProgress>(WHEEL_PROGRESS_EVENT, (event) => handler(event.payload)),
   onWheelFailed: (handler: (mensagem: string) => void): Promise<UnlistenFn> =>
