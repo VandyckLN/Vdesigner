@@ -11,6 +11,7 @@ mod palette;
 mod resize;
 mod svg;
 mod trace;
+mod wheel;
 
 pub use color::{
     format, from_oklch, gradient, harmonies, parse_hex, ramp, to_oklch, Color, ColorFormat,
@@ -29,3 +30,7 @@ pub use palette::{
 pub use resize::{resize, FitMode, ResizeSpec, MAX_SIDE};
 pub use svg::{is_svg, rasterize_svg};
 pub use trace::{trace_svg, TraceDetail, TraceMode, TraceSpec, TRACE_MAX_SIDE, TRACE_MIN_SIDE};
+pub use wheel::{
+    accepts, classify_selection, output_stem, wheel_encode_spec, wheel_targets, SelectedFile,
+    Selection, SelectionKind, CONVERTED_SUFFIX, MAX_SELECTION, WHEEL_QUALITY,
+};

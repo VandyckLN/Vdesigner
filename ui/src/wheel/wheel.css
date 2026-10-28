@@ -1,0 +1,95 @@
+/* The window is transparent, so the dial floats over whatever the person was
+   looking at. Nothing here paints a page background: a filled rectangle would
+   turn the round menu into a square card. */
+.roda {
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100vh;
+  user-select: none;
+}
+
+.roda svg {
+  width: min(100vw, 100vh);
+  height: min(100vw, 100vh);
+  /* The dial reads over a light desktop and a dark one alike. */
+  filter: drop-shadow(0 6px 24px rgb(0 0 0 / 45%));
+  overflow: visible;
+}
+
+.fatia path {
+  fill: rgb(22 22 26 / 92%);
+  stroke: rgb(255 255 255 / 14%);
+  stroke-width: 1.5;
+  transition: fill 90ms ease-out;
+}
+
+.fatia text {
+  fill: rgb(238 238 242 / 92%);
+  font-size: 19px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.fatia-ativa path {
+  fill: rgb(96 114 255 / 96%);
+  stroke: rgb(255 255 255 / 55%);
+}
+
+.fatia-ativa text {
+  fill: #fff;
+}
+
+.fatia:hover {
+  cursor: pointer;
+}
+
+.roda-contagem {
+  fill: rgb(238 238 242 / 95%);
+  font-size: 34px;
+  font-weight: 700;
+}
+
+.roda-unidade {
+  fill: rgb(238 238 242 / 62%);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.roda-nota,
+.roda-falha {
+  position: absolute;
+  bottom: 10px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgb(22 22 26 / 92%);
+  color: rgb(238 238 242 / 88%);
+  font-size: 12px;
+  text-align: center;
+}
+
+.roda-aviso {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  width: 100vw;
+  height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+  text-align: center;
+  background: rgb(22 22 26 / 94%);
+  border-radius: 18px;
+  color: rgb(238 238 242 / 92%);
+}
+
+.roda-aviso p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.roda-falha {
+  position: static;
+  background: rgb(120 28 28 / 92%);
+}

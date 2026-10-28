@@ -1,15 +1,18 @@
-use crate::export::{resolve_output_path, write_bytes};
+use crate::explorer;
+use crate::export::{resolve_batch_output_path, resolve_output_path, write_bytes, write_new};
 use crate::palette_io;
 use crate::picker::{self, OverlayGeometry, Picker};
 use crate::screen;
 use crate::session::{Session, SourceImage};
+use crate::wheel::{self as wheel_window, Wheel, WheelState};
 use base64::Engine;
 use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, State};
 use vdesigner_core::{
-    decode, format as format_color_value, harmonies, is_svg, parse_hex, ramp, rasterize_svg,
-    run_job, run_job_cancellable, run_preview, ColorFormat, EncodeSpec, Job, OutputFormat, Palette,
+    classify_selection, decode, format as format_color_value, harmonies, is_svg, parse_hex, ramp,
+    rasterize_svg, run_job, run_job_cancellable, run_preview, wheel_encode_spec, wheel_targets,
+    ColorFormat, EncodeSpec, Job, OutputFormat, Palette,
 };
 
 const PREVIEW_MAX_SIDE: u32 = 2048;
@@ -490,4 +493,208 @@ fn close_overlay(app: &tauri::AppHandle, picker: &Picker) {
 #[derive(Clone, serde::Serialize)]
 pub struct PickedColor {
     pub hex: String,
+}
+
+// ---------------------------------------------------------------------------
+// Wheel: converting a selection made outside the app
+// ---------------------------------------------------------------------------
+
+/// Event the batch publishes after each file, finished or failed.
+pub const WHEEL_PROGRESS_EVENT: &str = "wheel-progress";
+
+#[derive(Clone, Serialize)]
+pub struct WheelProgress {
+    /// 1-based index of the file that just finished.
+    pub current: u32,
+    pub total: u32,
+    pub path: String,
+    /// `None` when the file converted; the reason when it did not.
+    pub error: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct WheelOutcome {
+    pub written: Vec<String>,
+    /// One entry per file that failed, as `(path, reason)`.
+    pub failed: Vec<(String, String)>,
+}
+
+/// Opens the wheel over the current File Explorer selection.
+///
+/// `async` for the same reason as [`start_pick`]: it closes a window.
+#[tauri::command]
+pub async fn start_wheel(
+    app: tauri::AppHandle,
+    wheel: State<'_, Wheel>,
+) -> CommandResult<WheelState> {
+    open_wheel(&app, &wheel)
+}
+
+/// The body of [`start_wheel`], callable without the command wrapper, so the
+/// global shortcut can call it from inside `run_on_main_thread`.
+pub fn open_wheel(app: &tauri::AppHandle, wheel: &Wheel) -> CommandResult<WheelState> {
+    // The window fetching its own state on mount must not re-read the
+    // selection: by then the person is looking at the wheel, not at Explorer,
+    // so a second read would come back empty.
+    if app.get_webview_window(wheel_window::WHEEL_LABEL).is_some() {
+        if let Some(state) = wheel.current() {
+            return Ok(state);
+        }
+    }
+
+    let paths = explorer::selected_files().map_err(|e| e.to_string())?;
+    let selection = classify_selection(&paths);
+    if selection.is_empty() {
+        // Every path was something the engine cannot read. Naming the first
+        // one beats a generic refusal.
+        let first = selection
+            .skipped
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "a seleção".to_string());
+        return Err(format!(
+            "nada na seleção é uma imagem que o Vdesigner abre ({first})"
+        ));
+    }
+    let targets = wheel_targets(&selection.files);
+    if targets.is_empty() {
+        return Err("a seleção não tem nenhum formato de saída em comum".to_string());
+    }
+
+    // A wheel left over from a previous pick would show the previous
+    // selection; close it before arming the new one.
+    if let Some(existing) = app.get_webview_window(wheel_window::WHEEL_LABEL) {
+        let _ = existing.close();
+    }
+    let state = wheel.arm(selection, targets);
+
+    let window = tauri::WebviewWindowBuilder::new(
+        app,
+        wheel_window::WHEEL_LABEL,
+        tauri::WebviewUrl::App("index.html".into()),
+    )
+    .title("Converter")
+    .decorations(false)
+    .transparent(true)
+    // Same reason as the eyedropper overlay: on Windows an undecorated
+    // window keeps an invisible shadow border that tao counts outside the
+    // client area, which would offset the wheel from where it is placed.
+    .shadow(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .resizable(false)
+    .inner_size(WHEEL_SIDE, WHEEL_SIDE)
+    .center()
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    // Without focus the wheel receives no key events, so Esc and the arrow
+    // keys would not work.
+    let _ = window.set_focus();
+
+    Ok(state)
+}
+
+/// Logical size of the wheel window. Square because the layout is radial.
+const WHEEL_SIDE: f64 = 420.0;
+
+#[tauri::command]
+pub async fn cancel_wheel(app: tauri::AppHandle, wheel: State<'_, Wheel>) -> CommandResult<()> {
+    close_wheel(&app, &wheel);
+    Ok(())
+}
+
+fn close_wheel(app: &tauri::AppHandle, wheel: &Wheel) {
+    if let Some(window) = app.get_webview_window(wheel_window::WHEEL_LABEL) {
+        let _ = window.close();
+    }
+    wheel.disarm();
+}
+
+/// Converts the armed selection into `target`, writing next to each original.
+///
+/// One file failing does not stop the batch. A selection of twenty photos
+/// where one is a truncated PNG should convert nineteen and say which one did
+/// not — stopping at the first failure would leave the person with a
+/// half-converted folder and no list of what is missing.
+#[tauri::command]
+pub async fn convert_selection(
+    app: tauri::AppHandle,
+    wheel: State<'_, Wheel>,
+    target: OutputFormat,
+) -> CommandResult<WheelOutcome> {
+    let files = wheel.take_for(target).map_err(|e| e.to_string())?;
+    close_wheel(&app, &wheel);
+
+    // No steps: the wheel re-encodes and nothing else. How to encode is the
+    // engine's call, not this layer's — `wheel_encode_spec` is where the
+    // quality and the SVG mode are decided, and where they are tested.
+    let job = Job {
+        steps: Vec::new(),
+        output: wheel_encode_spec(target),
+    };
+    let extension = extension_for(target);
+    let total = files.len() as u32;
+
+    // The return type is spelled out because this closure has no `?` to infer
+    // the error from: every per-file failure is collected instead of
+    // propagated, so nothing else pins it to `String`.
+    tauri::async_runtime::spawn_blocking(move || -> Result<WheelOutcome, String> {
+        let mut written = Vec::new();
+        let mut failed: Vec<(String, String)> = Vec::new();
+
+        for (index, file) in files.iter().enumerate() {
+            let current = index as u32 + 1;
+            let result = convert_one(&file.path, &job, extension);
+            let error = match result {
+                Ok(path) => {
+                    written.push(path);
+                    None
+                }
+                Err(reason) => {
+                    failed.push((file.path.clone(), reason.clone()));
+                    Some(reason)
+                }
+            };
+            // A failed emit must not fail the batch: the files are still
+            // written, the interface just stops hearing about them.
+            let _ = app.emit(
+                WHEEL_PROGRESS_EVENT,
+                WheelProgress {
+                    current,
+                    total,
+                    path: file.path.clone(),
+                    error,
+                },
+            );
+        }
+
+        Ok(WheelOutcome { written, failed })
+    })
+    .await
+    .map_err(|_| "a conversão foi interrompida".to_string())?
+}
+
+/// One file, start to finish. Errors are the message the interface shows next
+/// to that file, so they name the cause and not the stage.
+fn convert_one(path: &str, job: &Job, extension: &str) -> Result<String, String> {
+    let source = PathBuf::from(path);
+    let directory = source
+        .parent()
+        .ok_or_else(|| "o arquivo não está em uma pasta".to_string())?;
+    let stem = source
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| "o nome do arquivo não é texto válido".to_string())?;
+
+    let bytes = std::fs::read(&source).map_err(|e| e.to_string())?;
+    // Progress inside a single file is not reported: in a batch the useful
+    // unit is the file, and a per-stage stream from twenty files at once
+    // would be noise.
+    let output = run_job(&bytes, job, &mut |_| {}).map_err(|e| e.to_string())?;
+
+    let destination =
+        resolve_batch_output_path(directory, stem, extension).map_err(|e| e.to_string())?;
+    write_new(&destination, &output.bytes).map_err(|e| e.to_string())?;
+    Ok(destination.display().to_string())
 }

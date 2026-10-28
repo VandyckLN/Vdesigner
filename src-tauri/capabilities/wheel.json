@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "wheel",
+  "description": "Capacidade mínima da janela da roda de conversão",
+  "windows": ["wheel"],
+  "permissions": ["core:default"]
+}
