@@ -198,14 +198,22 @@ export function Wheel() {
             </g>
           );
         })}
-        <text className="roda-contagem" x={CENTRO} y={CENTRO - 8} textAnchor="middle">
+        {/* Filled so the count stays legible over a light desktop. */}
+        <circle className="roda-miolo" cx={CENTRO} cy={CENTRO} r={RAIO_INTERNO - 8} />
+        <text className="roda-contagem" x={CENTRO} y={CENTRO - 10} textAnchor="middle">
           {estado.files.length}
         </text>
-        <text className="roda-unidade" x={CENTRO} y={CENTRO + 14} textAnchor="middle">
+        <text className="roda-unidade" x={CENTRO} y={CENTRO + 10} textAnchor="middle">
           {estado.files.length === 1 ? "arquivo" : "arquivos"}
         </text>
+        {alvos[foco] ? (
+          <text className="roda-destino" x={CENTRO} y={CENTRO + 32} textAnchor="middle">
+            para <tspan>{ROTULOS[alvos[foco]]}</tspan>
+          </text>
+        ) : null}
       </svg>
 
+      <p className="roda-dica">Enter converte · Esc fecha</p>
       {estado.skipped.length > 0 ? (
         <p className="roda-nota">
           {estado.skipped.length === 1
