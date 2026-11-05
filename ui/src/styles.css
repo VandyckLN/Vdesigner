@@ -471,5 +471,49 @@ body {
 .gradient-list li { display: flex; align-items: center; gap: var(--step); border-top: 1px solid var(--rule); padding: 6px 0; }
 .gradient-name { color: var(--ink); font-size: 12px; }
 
+/* Continuous strip + one tone per button below it. Square and hairlined like
+   every other swatch here; the strip carries only the inline gradient. */
+.gradient-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--rule);
+}
+/* Inner frame: a hairline set off from the strip by a sliver of panel, so the
+   gradient sits in a mount instead of bleeding to the edge. */
+.gradient-frame { display: block; padding: 3px; border: 1px solid var(--rule); background: var(--bg); }
+.gradient-strip { display: block; height: 32px; }
+.gradient-copy {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.gradient-copy:hover { border-color: var(--accent); }
+.gradient-copy:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.gradient-list .gradient-strip { flex: 0 0 160px; height: 20px; }
+.gradient-tones { display: flex; gap: 4px; }
+.gradient-tone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid var(--rule);
+  background: var(--bg-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.gradient-tone .swatch-chip { min-height: 8px; }
+.gradient-tone code { font-family: var(--mono); font-size: 10px; padding: 2px 4px; }
+.gradient-tone:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.preset-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--step); }
+.preset-name { display: block; font-size: 12px; color: var(--ink); margin-bottom: 4px; }
+
 
 
