@@ -1,11 +1,11 @@
 {
-  "version": "2.4.0",
-  "notes": "",
-  "pub_date": "2026-10-28T23:43:13.709Z",
+  "version": "2.4.1",
+  "notes": "Correção visual da roda de conversão (Ctrl+Alt+V no Explorer).",
+  "pub_date": "2026-10-30T17:16:58.971Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeWJaNExtc2I3WVhydXNWcStGcTRyazRkVjdLSmV6M0dLZWpzVE5uRGJvUnJKTW9EU3B6TU1tWTduZ1QzVmExNWdzQjEwTHRyZkYwWDBZMnJoeWVEVG1pTGNSemlqRndVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMjMwNzIyCWZpbGU6VmRlc2lnbmVyXzIuNC4wX3g2NC1zZXR1cC5leGUKUlNQRVl3QlBSaFNFV1hDZzR3M1J3SWxYZzFiUEtaYnlEUzl1WEVKcjFjK1BGeVF6V1lWcVJWYW0xQVFIU0dsRDJjMi9QMXV4N2JnVHBZY0VJNy9jRGc9PQo=",
-      "url": "https://github.com/VandyckLN/Vdesigner/releases/download/v2.4.0/Vdesigner_2.4.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeWJaNExtc2I3WWFOUkVwRVdZT1VIU21XS0FOclJpN2NKN3drZ0xVeTNoeTYzYnNoRkdYbEJIaHNtMldlY1NhRWZpN2JGZWF0UjBKTWN6ZEt5SXNXc29hNXFpZmdDNmdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzgwNDc2CWZpbGU6VmRlc2lnbmVyXzIuNC4xX3g2NC1zZXR1cC5leGUKbFErT2N0OFBoSU9EekdYdGVoeTJwdmQwSW42QzhKcUJJVnJBOE03N2hpak9HemJTZWRTTWEwaDltRjZQaEs5Y0JadnlSSjNJZUxCMkV6NVJaYjRwQkE9PQo=",
+      "url": "https://github.com/VandyckLN/Vdesigner/releases/download/v2.4.1/Vdesigner_2.4.1_x64-setup.exe"
     }
   }
 }
