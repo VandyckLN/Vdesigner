@@ -8,6 +8,47 @@ import {
   type Palette,
   type Variations,
 } from "../api";
+import { PRESETS } from "./presets";
+
+/** Ramp indices for steps 900, 700, 500, 300 and 50: five tones, dark to light. */
+const BAR_STEPS = [9, 7, 5, 3, 0];
+
+/** A continuous strip with one button per tone underneath. The strip is
+ *  decorative; the buttons carry every hex as text. */
+function GradientBar({
+  label,
+  tons,
+  onUse,
+}: {
+  label: string;
+  tons: string[];
+  onUse: (hex: string) => void;
+}) {
+  return (
+    <div className="gradient-bar" role="group" aria-label={label}>
+      <span
+        className="gradient-strip"
+        style={{ backgroundImage: `linear-gradient(90deg, ${tons.join(", ")})` }}
+        aria-hidden="true"
+      />
+      <span className="gradient-tones">
+        {tons.map((tom) => (
+          <button
+            key={tom}
+            type="button"
+            className="gradient-tone"
+            onClick={() => onUse(tom)}
+            aria-label={`Usar ${tom}`}
+          >
+            {/* Label on its own opaque surface, like .swatch-meta: readable on any tone. */}
+            <span className="swatch-chip" style={{ background: tom }} aria-hidden="true" />
+            <code>{tom.slice(1).toUpperCase()}</code>
+          </button>
+        ))}
+      </span>
+    </div>
+  );
+}
 
 const FORMATS: ColorFormat[] = ["Hex", "Rgb", "Hsl", "Oklch"];
 
@@ -57,6 +98,25 @@ export function Colors({
   const [gradName, setGradName] = useState("");
   const [gradFrom, setGradFrom] = useState("");
   const [gradTo, setGradTo] = useState("");
+  const [gradCss, setGradCss] = useState<Record<string, string>>({});
+
+  // Saved gradients are painted with the engine's own rule, the same string
+  // "Copiar" hands out, so the strip never disagrees with the stylesheet.
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all(
+      palette.degrades.map(async (d) => [d.nome, await api.gradientCss(palette, d.nome)] as const),
+    )
+      .then((pares) => {
+        if (!cancelled) setGradCss(Object.fromEntries(pares));
+      })
+      .catch(() => {
+        // A strip that cannot be built just stays blank; "Copiar" reports the error.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [palette]);
 
   // The captured colour always reaches the clipboard, because that is the
   // whole point of the eyedropper: it never has to pass through the palette
@@ -141,6 +201,14 @@ export function Colors({
     } catch (e) {
       setError(`Não foi possível copiar a cor: ${String(e)}`);
     }
+  };
+
+  /** A tone from any bar: into the field (so its scale shows) and onto the clipboard. */
+  const applyTone = (tom: string) => {
+    setHex(tom);
+    void Promise.resolve(writeText(tom)).catch(() => {
+      setError("Não foi possível copiar a cor.");
+    });
   };
 
   const startPick = async () => {
@@ -289,6 +357,20 @@ export function Colors({
         </p>
       )}
 
+      <section aria-labelledby="presets-heading">
+        <h2 id="presets-heading" className="mono">
+          Modelos
+        </h2>
+        <ul className="preset-list" aria-label="Modelos prontos">
+          {PRESETS.map((preset) => (
+            <li key={preset.nome}>
+              <span className="preset-name">{preset.nome}</span>
+              <GradientBar label={`Modelo ${preset.nome}`} tons={preset.tons} onUse={applyTone} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {capturadas.length > 0 && (
         <section aria-labelledby="captured-heading">
           <h2 id="captured-heading" className="mono">
@@ -373,6 +455,12 @@ export function Colors({
             <ul className="gradient-list" aria-label="Degradês da paleta">
               {palette.degrades.map((degrade) => (
                 <li key={degrade.nome}>
+                  <span
+                    className="gradient-strip"
+                    role="img"
+                    aria-label={`Degradê ${degrade.nome}`}
+                    style={gradCss[degrade.nome] ? { backgroundImage: gradCss[degrade.nome] } : undefined}
+                  />
                   <span className="gradient-name">{degrade.nome}</span>
                   <code>{degrade.de} → {degrade.para}</code>
                   <button
@@ -398,6 +486,12 @@ export function Colors({
 
       {variations && (
         <>
+          <GradientBar
+            label="Degradê da cor atual"
+            tons={BAR_STEPS.map((i) => variations.ramp[i])}
+            onUse={applyTone}
+          />
+
           <ol className="ramp" aria-label="Escala de tons">
             {variations.ramp.map((shade, index) => (
               <li key={RAMP_STEPS[index]}>

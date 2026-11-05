@@ -48,6 +48,7 @@ beforeEach(() => {
   vi.spyOn(api, "formatColor").mockResolvedValue("rgb(138, 144, 150)");
   vi.spyOn(api, "loadPalette").mockResolvedValue(null);
   vi.spyOn(api, "savePalette").mockResolvedValue("{}");
+  vi.spyOn(api, "gradientCss").mockResolvedValue("linear-gradient(90deg, #ede8de, #8a9096)");
 });
 
 describe("Colors", () => {
@@ -486,6 +487,56 @@ describe("Colors", () => {
     await waitFor(() => expect(api.savePalette).toHaveBeenCalled());
     const [, paleta] = vi.mocked(api.savePalette).mock.calls.at(-1)!;
     expect(paleta.degrades).toHaveLength(0);
+  });
+
+  it("mostra os modelos prontos mesmo sem pasta escolhida", () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    const modelos = screen.getByRole("list", { name: "Modelos prontos" });
+    for (const nome of ["Acid Lime", "Tangerine", "Lagoon", "Cherry Cola", "Ultraviolet"]) {
+      expect(within(modelos).getByText(nome)).toBeInTheDocument();
+    }
+    expect(within(modelos).getByRole("button", { name: "Usar #0F1A0B" })).toBeInTheDocument();
+  });
+
+  it("um tom do modelo vai para o campo e para a área de transferência", async () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.click(screen.getByRole("button", { name: "Usar #6FB52A" }));
+    expect(screen.getByLabelText(/cor em hex/i)).toHaveValue("#6FB52A");
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("#6FB52A"));
+    // Picking a tone must not touch the project file.
+    expect(api.savePalette).not.toHaveBeenCalled();
+  });
+
+  it("desenha a cor digitada numa barra de cinco tons, do escuro ao claro", async () => {
+    render(<Colors onPickDirectory={async () => null} />);
+    await userEvent.type(screen.getByLabelText(/cor em hex/i), "#8A9096");
+    const barra = await screen.findByRole("group", { name: "Degradê da cor atual" });
+    const tons = within(barra).getAllByRole("button").map((b) => b.getAttribute("aria-label"));
+    // Steps 900, 700, 500, 300 and 50 of the engine's ramp.
+    expect(tons).toEqual(["Usar #212427", "Usar #555A5F", "Usar #8A9096", "Usar #BCBEC1", "Usar #F7F7F8"]);
+  });
+
+  it("desenha cada degradê salvo com a mesma regra que o botão Copiar entrega", async () => {
+    vi.spyOn(api, "loadPalette").mockResolvedValue({
+      palette: {
+        versao: 1,
+        nome: "paleta",
+        gerar: ["css"],
+        cores: [
+          { nome: "tinta", hex: "#ede8de", rampa: false },
+          { nome: "acento", hex: "#8a9096", rampa: false },
+        ],
+        degrades: [{ nome: "fundo", de: "tinta", para: "acento" }],
+      },
+      on_disk: "{}",
+    });
+    render(<Colors onPickDirectory={async () => "D:/projeto"} />);
+    await userEvent.click(screen.getByRole("button", { name: "Escolher pasta" }));
+    const faixa = await screen.findByRole("img", { name: "Degradê fundo" });
+    await waitFor(() =>
+      expect(faixa.style.backgroundImage).toBe("linear-gradient(90deg, #ede8de, #8a9096)"),
+    );
+    expect(api.gradientCss).toHaveBeenCalledWith(expect.objectContaining({ nome: "paleta" }), "fundo");
   });
 });
 
