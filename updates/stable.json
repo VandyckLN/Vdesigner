@@ -1,11 +1,11 @@
 {
-  "version": "2.4.1",
-  "notes": "Correção visual da roda de conversão (Ctrl+Alt+V no Explorer).",
-  "pub_date": "2026-10-30T17:16:58.971Z",
+  "version": "2.4.2",
+  "notes": "Modelos de cores prontos, barra contínua de degradê e correções de segurança.",
+  "pub_date": "2026-11-05T17:16:47.057Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeWJaNExtc2I3WWFOUkVwRVdZT1VIU21XS0FOclJpN2NKN3drZ0xVeTNoeTYzYnNoRkdYbEJIaHNtMldlY1NhRWZpN2JGZWF0UjBKTWN6ZEt5SXNXc29hNXFpZmdDNmdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzMzgwNDc2CWZpbGU6VmRlc2lnbmVyXzIuNC4xX3g2NC1zZXR1cC5leGUKbFErT2N0OFBoSU9EekdYdGVoeTJwdmQwSW42QzhKcUJJVnJBOE03N2hpak9HemJTZWRTTWEwaDltRjZQaEs5Y0JadnlSSjNJZUxCMkV6NVJaYjRwQkE9PQo=",
-      "url": "https://github.com/VandyckLN/Vdesigner/releases/download/v2.4.1/Vdesigner_2.4.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeWJaNExtc2I3WWJqVlc1MUZOeS9qbVJtdHNpS05TcXptQ1RzZzk1dkZqYjM3WVVzSUN0eTJhQkxKcFFicmJzMUFyb3ByNmg5a0xQWWttL3BjUFRRbS94Q1ZyTnJETlE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzODk4MTI0CWZpbGU6VmRlc2lnbmVyXzIuNC4yX3g2NC1zZXR1cC5leGUKN1NSeXdFNFJJU2MwaFUvSjVLSjNJaExMUTNYekpMdUU3MGJjWGp5TGphdTJFVUlna2R0a2NhalVwUVlVRm5vYkVkYjVxTEtKd0JIZythWVFWYkJ1RFE9PQo=",
+      "url": "https://github.com/VandyckLN/Vdesigner/releases/download/v2.4.2/Vdesigner_2.4.2_x64-setup.exe"
     }
   }
 }
