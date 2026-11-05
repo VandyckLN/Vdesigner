@@ -17,20 +17,23 @@ const BAR_STEPS = [9, 7, 5, 3, 0];
  *  decorative; the buttons carry every hex as text. */
 function GradientBar({
   label,
+  nome,
   tons,
   onUse,
+  onCopy,
 }: {
   label: string;
+  nome: string;
   tons: string[];
   onUse: (hex: string) => void;
+  onCopy: (css: string) => void;
 }) {
+  const css = `linear-gradient(90deg, ${tons.join(", ")})`;
   return (
     <div className="gradient-bar" role="group" aria-label={label}>
-      <span
-        className="gradient-strip"
-        style={{ backgroundImage: `linear-gradient(90deg, ${tons.join(", ")})` }}
-        aria-hidden="true"
-      />
+      <span className="gradient-frame">
+        <span className="gradient-strip" style={{ backgroundImage: css }} aria-hidden="true" />
+      </span>
       <span className="gradient-tones">
         {tons.map((tom) => (
           <button
@@ -45,6 +48,14 @@ function GradientBar({
             <code>{tom.slice(1).toUpperCase()}</code>
           </button>
         ))}
+        <button
+          type="button"
+          className="gradient-copy"
+          onClick={() => onCopy(css)}
+          aria-label={`Copiar o degradê ${nome}`}
+        >
+          Copiar degradê
+        </button>
       </span>
     </div>
   );
@@ -211,6 +222,15 @@ export function Colors({
     });
   };
 
+  const copyBar = async (css: string) => {
+    try {
+      await writeText(css);
+      setError(null);
+    } catch (e) {
+      setError(`Não foi possível copiar o degradê: ${String(e)}`);
+    }
+  };
+
   const startPick = async () => {
     try {
       await api.startPick();
@@ -365,7 +385,13 @@ export function Colors({
           {PRESETS.map((preset) => (
             <li key={preset.nome}>
               <span className="preset-name">{preset.nome}</span>
-              <GradientBar label={`Modelo ${preset.nome}`} tons={preset.tons} onUse={applyTone} />
+              <GradientBar
+                label={`Modelo ${preset.nome}`}
+                nome={preset.nome}
+                tons={preset.tons}
+                onUse={applyTone}
+                onCopy={(css) => void copyBar(css)}
+              />
             </li>
           ))}
         </ul>
@@ -488,8 +514,10 @@ export function Colors({
         <>
           <GradientBar
             label="Degradê da cor atual"
+            nome="da cor atual"
             tons={BAR_STEPS.map((i) => variations.ramp[i])}
             onUse={applyTone}
+            onCopy={(css) => void copyBar(css)}
           />
 
           <ol className="ramp" aria-label="Escala de tons">
