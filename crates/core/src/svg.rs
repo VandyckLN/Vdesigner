@@ -1,4 +1,5 @@
 use crate::error::CoreError;
+use crate::resize::MAX_SIDE;
 use image::{DynamicImage, RgbaImage};
 use resvg::tiny_skia;
 use resvg::usvg;
@@ -17,7 +18,12 @@ pub fn rasterize_svg(
     width: Option<u32>,
     height: Option<u32>,
 ) -> Result<DynamicImage, CoreError> {
-    let options = usvg::Options::default();
+    let mut options = usvg::Options::default();
+    // Forbid loading local files or URLs referenced by `<image href="...">`. The
+    // default resolver reads them off disk, so a crafted SVG could pull an
+    // arbitrary file into a preview or export. `data:` URIs still work through
+    // the default data resolver.
+    options.image_href_resolver.resolve_string = Box::new(|_href, _opts| None);
     let tree = usvg::Tree::from_data(bytes, &options)
         .map_err(|e| CoreError::Decode(format!("SVG inválido: {e}")))?;
 
@@ -37,6 +43,15 @@ pub fn rasterize_svg(
             intrinsic.height().round().max(1.0) as u32,
         ),
     };
+
+    // A hostile SVG can declare an enormous intrinsic size; without a cap the
+    // pixmap allocation below reaches many gigabytes and aborts the process on
+    // OOM. The same per-side limit the resizer enforces applies here.
+    if target_w > MAX_SIDE || target_h > MAX_SIDE {
+        return Err(CoreError::InvalidParameter(format!(
+            "SVG grande demais: {target_w}x{target_h} excede {MAX_SIDE} pixels por lado"
+        )));
+    }
 
     let mut pixmap = tiny_skia::Pixmap::new(target_w, target_h)
         .ok_or_else(|| CoreError::InvalidParameter("dimensões de SVG inválidas".into()))?;

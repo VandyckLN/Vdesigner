@@ -47,3 +47,12 @@ fn rejects_malformed_svg() {
     let err = rasterize_svg(b"<svg><unclosed>", None, None).unwrap_err();
     assert!(matches!(err, CoreError::Decode(_)));
 }
+
+#[test]
+fn rejects_svg_larger_than_the_side_limit() {
+    // A crafted SVG with an enormous intrinsic size would otherwise allocate
+    // many gigabytes and abort the process.
+    let huge = br#"<svg xmlns="http://www.w3.org/2000/svg" width="60000" height="60000"></svg>"#;
+    let err = rasterize_svg(huge, None, None).unwrap_err();
+    assert!(matches!(err, CoreError::InvalidParameter(_)));
+}

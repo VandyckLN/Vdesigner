@@ -69,8 +69,24 @@ pub struct ExportProgress {
 /// displays the message. The engine keeps the typed errors.
 type CommandResult<T> = Result<T, String>;
 
+/// Upper bound on a single file we read into memory for a preview. Generous for
+/// real images, but it stops a hostile multi-gigabyte file from exhausting
+/// memory before the decoders ever see it.
+const MAX_IMAGE_BYTES: u64 = 256 * 1024 * 1024;
+
 #[tauri::command]
 pub fn open_image(path: String, session: State<Session>) -> CommandResult<ImageInfo> {
+    let size = std::fs::metadata(&path)
+        .map_err(|e| format!("não foi possível ler o arquivo: {e}"))?
+        .len();
+    if size > MAX_IMAGE_BYTES {
+        return Err(format!(
+            "arquivo grande demais: {} MiB excede o limite de {} MiB",
+            size / (1024 * 1024),
+            MAX_IMAGE_BYTES / (1024 * 1024)
+        ));
+    }
+
     let bytes = std::fs::read(&path).map_err(|e| format!("não foi possível ler o arquivo: {e}"))?;
 
     let image = if is_svg(&bytes) {
